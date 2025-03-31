@@ -52,7 +52,6 @@ def derivative(f, x, i, j, h=5e-5):
     x_2[j] -= h
     return (f(x_1).ravel()[i] - f(x_2).ravel()[i]) / (2 * h)
 
-## Cheats enabled
 if cheats:
     from scipy.optimize import fsolve
 
@@ -108,6 +107,7 @@ class ButcherTable:
             self.b = []
             
             self.type = "Explicit"
+            self.adaptive = False
             
             self.s = len(A) - 1
             
@@ -125,11 +125,13 @@ class ButcherTable:
         elif len(A) == len(A[0]) + 1:
             self.a = []
             self.c = []
-            self.b = []
+            self.b_1 = []
+            self.b_2 = []
+            self.adaptive = True
             
             self.type = "ExplicitAdaptive"
             
-            self.s = len(A) - 1
+            self.s = len(A) - 2
             
             for i in range(self.s):
                 self.a.append([])
@@ -292,7 +294,10 @@ def solve_runge_kutta(f, start, stop, tau, x_0, method, epsilon=epsilon, max_err
 
     while t_i <= stop:
         if print_progress and time.time() - last_output > 1:
-            print(f"\rt: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
+            if method.table.adaptive:
+                print(f"\rtau: {tau:.8f}, t: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
+            else:
+                print(f"\rt: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
             last_output = time.time()
         
         try:
@@ -449,7 +454,7 @@ def step_backward_differentiation_implicit(tau, t, x, f, N, epsilon=epsilon):
             case 4:
                 return solve_newton(lambda a: 12 / 25 * (tau * f(t, a) - 1 / 4 * x[n - 3] + 4 / 3 * x[n - 2] - 3 * x[n - 1] + 4 * x[n]) - a, x[n] + (x[n] - x[n - 1]) / 2, epsilon=epsilon)
 
-def solve_backward_differentiation_implicit(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every_n=1, print_progress=False):
+def solve_backward_differentiation(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every_n=1, print_progress=False):
     t = [start]
     i = 0
         

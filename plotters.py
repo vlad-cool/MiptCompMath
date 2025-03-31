@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 def plot_solutions(solution_containers, multidimensionals_solution=False, parameter="order"):
     plt.figure(figsize=(12, 5))
@@ -28,3 +29,12 @@ def plot_solutions(solution_containers, multidimensionals_solution=False, parame
         plt.title("Фазовые траектории")
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2))
         plt.show()
+
+def plot_tau(solution_container):
+    t = solution_container.solution.t
+    plt.figure(figsize=(12, 5))
+    plt.plot(t[:-1], np.array(t[1:]) - np.array(t[:-1]))
+    plt.xlabel("$t$")
+    plt.ylabel("$\\tau$")
+    plt.title(f"Зависимость шага интегрирования от $t$ для{solution_container.name} ")
+    plt.show()
