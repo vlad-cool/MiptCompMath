@@ -1,8 +1,8 @@
 import numpy as np
+import time
 
-cheats = False
 verbose = False
-
+cheats = False
 epsilon = 1e-5
 
 def close_enough(A, B, epsilon=epsilon):
@@ -150,11 +150,12 @@ class Solution:
         self.x = x
 
 class RungeKuttaMethod:
-    def __init__(self, name: str, order: int, table: ButcherTable):
+    def __init__(self, name: str, order: int, table: ButcherTable, step=None):
         self.name = name
         self.order = order
         self.table = table
         self.solution = None
+        self.step = step
     
     def set_solution(self, t, x):
         self.solution = Solution(t, x)
@@ -274,7 +275,7 @@ def step_runge_kutta(tau, t, x, f, method, epsilon=epsilon):
         case "ImplicitAdaptive":
             return step_runge_kutta_implicit_adaptive(tau, t, x, f, method, epsilon=epsilon)
 
-def solve_runge_kutta(f, start, stop, tau, x_0, method, epsilon=epsilon, max_err=0.1, include_every_n=1):
+def solve_runge_kutta(f, start, stop, tau, x_0, method, epsilon=epsilon, max_err=0.1, include_every_n=1, print_progress=False):
     t = [start]
     
     t_i = start
@@ -285,7 +286,15 @@ def solve_runge_kutta(f, start, stop, tau, x_0, method, epsilon=epsilon, max_err
 
     x = [np.array(x_0)]
         
+    
+    last_output = -1
+    start_time = time.time()
+
     while t_i <= stop:
+        if print_progress and time.time() - last_output > 1:
+            print(f"\rt: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
+            last_output = time.time()
+        
         try:
             x_i, err = step_runge_kutta(tau, t_i, x_i, f, method.table, epsilon=epsilon)
             
@@ -356,7 +365,7 @@ def step_adams_implicit(tau, t, x, f, N, epsilon=epsilon):
             case 3:
                 return solve_newton(lambda a: x[n] + tau * (9 * f(t, a) + 19 * f(t, x[n]) - 5 * f(t, x[n - 1]) + f(t, x[n - 2])) / 24 - a, x[n], epsilon=epsilon)
 
-def solve_adams(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every_n=1):
+def solve_adams(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every_n=1, print_progress=False):
     t = [start]
     i = 0
         
@@ -367,7 +376,14 @@ def solve_adams(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every
     t_last= [start]
     x_last = [np.array(x)]
 
+    last_output = -1
+    start_time = time.time()
+
     while t[-1] <= stop:
+        if print_progress and time.time() - last_output > 1:
+            print(f"\rt: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
+            last_output = time.time()
+        
         if method.type.lower() == "explicit":
             x_last.append(step_adams_explicit(tau, t[-1], x, f, method.order))
         elif method.type.lower() == "implicit":
@@ -433,7 +449,7 @@ def step_backward_differentiation_implicit(tau, t, x, f, N, epsilon=epsilon):
             case 4:
                 return solve_newton(lambda a: 12 / 25 * (tau * f(t, a) - 1 / 4 * x[n - 3] + 4 / 3 * x[n - 2] - 3 * x[n - 1] + 4 * x[n]) - a, x[n] + (x[n] - x[n - 1]) / 2, epsilon=epsilon)
 
-def solve_backward_differentiation_implicit(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every_n=1):
+def solve_backward_differentiation_implicit(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every_n=1, print_progress=False):
     t = [start]
     i = 0
         
@@ -443,8 +459,15 @@ def solve_backward_differentiation_implicit(f, start, stop, tau, x_0, method, ep
     
     t_last= [start]
     x_last = [np.array(x)]
+    
+    last_output = -1
+    start_time = time.time()
 
     while t[-1] <= stop:
+        if print_progress and time.time() - last_output > 1:
+            print(f"\rt: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
+            last_output = time.time()
+        
         if method.type.lower() == "explicit":
             x_last.append(step_backward_differentiation_explicit(tau, t[-1], x, f, method.order))
         elif method.type.lower() == "implicit":
