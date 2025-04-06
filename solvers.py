@@ -165,7 +165,7 @@ class RungeKuttaMethod:
 def step_runge_kutta_explicit(tau, t, x, f, method, epsilon=epsilon):
     k = []
     for i in range(method.s):
-        arg_1 = t + method.s * tau
+        arg_1 = t + method.c[i] * tau
         arg_2 = 0
         for j in range(i):
             arg_2 += method.a[i][j] * k[j]
@@ -187,7 +187,7 @@ def step_runge_kutta_implicit(tau, t, x, f, method, epsilon=epsilon):
     def equation(k_0):
         k = []
         for i in range(method.s):
-            arg_1 = t + method.s * tau
+            arg_1 = t + method.c[i] * tau
             arg_2 = 0
             for j in range(i):
                 arg_2 += method.a[i][j] * k_0[j]
@@ -211,7 +211,7 @@ def step_runge_kutta_implicit(tau, t, x, f, method, epsilon=epsilon):
 def step_runge_kutta_explicit_adaptive(tau, t, x, f, method, epsilon=epsilon):
     k = []
     for i in range(method.s):
-        arg_1 = t + method.s * tau
+        arg_1 = t + method.c[i] * tau
         arg_2 = 0
         for j in range(i):
             arg_2 += method.a[i][j] * k[j]
@@ -239,7 +239,7 @@ def step_runge_kutta_implicit_adaptive(tau, t, x, f, method, epsilon=epsilon):
     def equation(k_0):
         k = []
         for i in range(method.s):
-            arg_1 = t + method.s * tau
+            arg_1 = t + method.c[i] * tau
             arg_2 = 0
             for j in range(i):
                 arg_2 += method.a[i][j] * k_0[j]
@@ -604,6 +604,9 @@ def solve_nordsieck(f, start, stop, tau, x_0, method, epsilon=epsilon, include_e
     # last_output = -1
     # start_time = time.time()
 
+    last_output = -1
+    start_time = time.time()
+
     t = [start]
     # i = 1
 
@@ -619,7 +622,14 @@ def solve_nordsieck(f, start, stop, tau, x_0, method, epsilon=epsilon, include_e
             break
         
         t.append(t[-1] + tau)
-        
+    
+    if print_progress and time.time() - last_output > 1:
+        if method.table.adaptive:
+            print(f"\rtau: {tau:.8f}, t: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
+        else:
+            print(f"\rt: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
+        last_output = time.time()
+    
     method.set_solution(
         t, 
         np.array([i[0] for i in z]),
