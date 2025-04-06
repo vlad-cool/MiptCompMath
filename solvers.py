@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import math
 
 verbose = False
 cheats = False
@@ -59,7 +60,6 @@ def solve_newton(f, x, epsilon=epsilon, max_iterations=100):
     x = np.copy(x)
     original_shape = x.shape
     x = x.ravel()
-    
         
     def f_flat(x):
         return f(x.ravel().reshape(original_shape)).ravel()
@@ -293,12 +293,6 @@ def solve_runge_kutta(f, start, stop, tau, x_0, method, epsilon=epsilon, max_err
     start_time = time.time()
 
     while t_i <= stop:
-        if print_progress and time.time() - last_output > 1:
-            if method.table.adaptive:
-                print(f"\rtau: {tau:.8f}, t: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
-            else:
-                print(f"\rt: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
-            last_output = time.time()
         
         try:
             x_i, err = step_runge_kutta(tau, t_i, x_i, f, method.table, epsilon=epsilon)
@@ -309,6 +303,13 @@ def solve_runge_kutta(f, start, stop, tau, x_0, method, epsilon=epsilon, max_err
                     tau = max_tau
     
             if err is None or err < max_err * 1.1:
+                if print_progress and time.time() - last_output > 1:
+                    if method.table.adaptive:
+                        print(f"\rtau: {tau:.8f}, t: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
+                    else:
+                        print(f"\rt: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
+                    last_output = time.time()
+                
                 i += 1
                 t_i += tau
                 
@@ -331,11 +332,12 @@ def solve_runge_kutta(f, start, stop, tau, x_0, method, epsilon=epsilon, max_err
 ################################################
 
 class AdamsMethod:
-    def __init__(self, order: int, type):
+    def __init__(self, order: int, type, step=None):
         self.name = f"Adams method ({type})"
         self.order = order
         self.type = type
         self.solution = None
+        self.step = step
     
     def set_solution(self, t, x):
         self.solution = Solution(t, x)
@@ -370,43 +372,34 @@ def step_adams_implicit(tau, t, x, f, N, epsilon=epsilon):
             case 3:
                 return solve_newton(lambda a: x[n] + tau * (9 * f(t, a) + 19 * f(t, x[n]) - 5 * f(t, x[n - 1]) + f(t, x[n - 2])) / 24 - a, x[n], epsilon=epsilon)
 
+
 def solve_adams(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every_n=1, print_progress=False):
     t = [start]
-    i = 0
-        
+    i = 1
+
     x = [
-        np.array(x_0)
+        np.copy(x_0)
     ]
+
+    print(method.name, method.order)
     
-    t_last= [start]
-    x_last = [np.array(x)]
-
-    last_output = -1
-    start_time = time.time()
-
-    while t[-1] <= stop:
-        if print_progress and time.time() - last_output > 1:
-            print(f"\rt: {t[-1]:.8f}, len: {len(t):010}, {time.time() - start_time:010.8f}", end="")
-            last_output = time.time()
+    while tau * i <= stop:
+        try:
+            x.append(step_adams_implicit(tau, t[i - 1], x, f, method.order))
+        except Exception as e:
+            print(e)
+            print(f"Failed to solve at t = {tau * i}")
+            break
         
-        if method.type.lower() == "explicit":
-            x_last.append(step_adams_explicit(tau, t[-1], x, f, method.order))
-        elif method.type.lower() == "implicit":
-            x_last.append(step_adams_implicit(tau, t[-1], x, f, method.order))
-        t_last.append(tau * i)
+        t.append(tau * i)
         
         i += 1
         
-        if len(t_last) > method.order:
-            t_last = t_last[len(t_last) - method.order:]
-            x_last = x_last[len(t_last) - method.order:]
-        
-        if i % include_every_n == 0:
-            x.append(x_last[-1])
-            t.append(t_last[-1])
-        
+        if verbose:
+            print(tau * i)
+    
     method.set_solution(
-        t,
+        t, 
         np.array(x),
     )
     
@@ -415,11 +408,12 @@ def solve_adams(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every
 ################################################
 
 class BackwardDiffenetiationMethod:
-    def __init__(self, order: int, type):
+    def __init__(self, order: int, type, step=None):
         self.name = f"Backward differentiation method method ({type})"
         self.order = order
         self.type = type
         self.solution = None
+        self.step = step
     
     def set_solution(self, t, x):
         self.solution = Solution(t, x)
@@ -492,6 +486,143 @@ def solve_backward_differentiation(f, start, stop, tau, x_0, method, epsilon=eps
     method.set_solution(
         t,
         np.array(x),
+    )
+    
+    return method
+
+################################################
+
+class NordsieckMethod:
+    def __init__(self, type, order: int, step=None):
+        self.name = f"Nordesieck representation of {type} method of order {order}"
+        self.order = order
+        self.type = type
+        self.solution = None
+        self.step = step
+        self.l = None
+        
+        match type.lower():
+            case "implicit_adams":
+                match order:
+                    case 1:
+                        self.l = [1/2, 1]
+                    case 2:
+                        self.l = [5/12, 1, 1/2]
+                    case 3:
+                        self.l = [3/8, 1, 3/4, 1/6]
+                    case 4:
+                        self.l = [251/720, 1, 11/12, 1/3, 1/24]
+                    case 5:
+                        self.l = [95/288, 1, 25/24, 35/72, 5/48, 1/120]
+                    case 6:
+                        self.l = [19087/60480, 1, 137/120, 5/8, 17/96, 1/40, 1/720]
+            case "implicit_backward_differentiation":
+                match order:
+                    case 1:
+                        self.l = [1, 1]
+                    case 2:
+                        self.l = [2/3, 1, 1/3]
+                    case 3:
+                        self.l = [6/11, 1, 6/11, 1/11]
+                    case 4:
+                        self.l = [12/15, 1, 7/10, 1/5, 1/50]
+                    case 5:
+                        self.l = [60/137, 1, 225/274, 85/274, 15/274, 1/274]
+                    case 6:
+                        self.l = [20/49, 1, 58/63, 5/12, 25/252, 1/84, 1/1764]
+        
+        if self.l is None:
+            raise ValueError("Unknown type or order")
+
+        self.l = np.array(self.l)
+    
+    def set_solution(self, t, x):
+        self.solution = Solution(t, x)
+
+def step_nordsieck(tau, t, f, z, l):
+    # print(f"z: {z}", flush=True)
+    k = len(l)
+    m = len(z[0])
+    # E = np.eye(m)
+    
+    P = np.zeros((k, k))
+    for i in range(k):
+        for j in range(k):
+            if i <= j:
+                P[i][j] = math.factorial(j) // (math.factorial(i) * math.factorial(j - i))
+   
+    e_1 = np.zeros(k)
+    e_1[1] = 1
+    # e_1[0] = 1
+    
+    def equation(a):
+        res = []
+        for i in range(len(a[0])):
+            z_i = np.zeros(k)
+            a_i = np.zeros(k)
+            # print(z[i], flush=True)
+            for j in range(k):
+                z_i[j] = z[j][i]
+                a_i[j] = a[j][i]
+            # print(P)
+            # print(z_i)
+            # print("", flush=True)
+            # print(P @ z_i)
+            # print(f(t + tau, a[0])[i])
+            # print(e_1 @ P @ z_i)
+            # print("", flush=True)
+            res.append(P @ z_i + l * (tau * f(t + tau, a[0])[i] - e_1 @ P @ z_i) - a_i)
+        
+        # print("res", np.array(res), flush=True)
+        return np.array(res)
+    
+    # print("AAA", equation(z), flush=True)
+    
+    # z_flat = z.flatten()
+    return solve_newton(equation, z)
+    # return solve_newton(lambda a: np.kron(P, E) * z_flat + np.kron(l, E) * (tau * f(t + tau, a[0]) - (e_1 @ np.kron(P, E)) @ z_flat) - a, z) # .reshape(z.shape)
+    
+def solve_nordsieck(f, start, stop, tau, x_0, method, epsilon=epsilon, include_every_n=1, print_progress=False):
+    # t = [start]
+    # i = 0
+        
+    # x = [
+    #     np.array(x_0)
+    # ]
+    
+    # t_last= [start]
+    # x_last = [np.array(x)]
+    
+    z_0 = np.zeros((len(method.l), len(x_0)))
+    z_0[0] = x_0
+    z_0[1] = f(start, x_0)
+    
+    z = [z_0]
+    
+    # z_0 = 
+    
+    # last_output = -1
+    # start_time = time.time()
+
+    t = [start]
+    # i = 1
+
+    print(method.name, method.order)
+    # def step_nordsieck(tau, t, f, z, l):
+    while t[-1] <= stop:
+        try:
+        # if True:
+            z.append(step_nordsieck(tau, t[-1], f, z[-1], method.l))
+        except Exception as e:
+            print(e)
+            print(f"Failed to solve at t = {t[-1] + tau}")
+            break
+        
+        t.append(t[-1] + tau)
+        
+    method.set_solution(
+        t, 
+        np.array([i[0] for i in z]),
     )
     
     return method
