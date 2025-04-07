@@ -134,13 +134,23 @@ pub trait DifferentialEquationNumericMethod<const N: usize> {
     fn get_name(&self) -> String;
 }
 
-enum SolverType {
+pub enum SolverType {
     Explicit,
     Implicit,
 }
 
+impl std::fmt::Display for SolverType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SolverType::Explicit => write!(f, "Explicit"),
+            SolverType::Implicit => write!(f, "Implicit"),
+        }
+    }
+}
+
 pub struct RungeKuttaMethod<const N: usize, const M: usize> {
     order: u32,
+    solver_type: SolverType,
     a: [[f64; N]; N],
     b: [f64; N],
     c: [f64; N],
@@ -149,8 +159,18 @@ pub struct RungeKuttaMethod<const N: usize, const M: usize> {
 
 impl<const N: usize, const M: usize> RungeKuttaMethod<N, M> {
     pub fn new(order: u32, a: [[f64; N]; N], b: [f64; N], c: [f64; N], name: String) -> Self {
+        let mut solver_type = SolverType::Explicit;
+        for i in 0..N {
+            for j in i..N {
+                if a[i][j] != 0f64 {
+                    solver_type = SolverType::Implicit;
+                }
+            }
+        }
+
         Self {
             order,
+            solver_type,
             a,
             b,
             c,
@@ -158,7 +178,7 @@ impl<const N: usize, const M: usize> RungeKuttaMethod<N, M> {
         }
     }
 
-    fn step_runge_kutta_explicit(
+    fn step_explicit(
         &mut self,
         problem: &CauchyProblem<N>,
         tau: f64,
@@ -215,15 +235,15 @@ impl<const N: usize, const M: usize> DifferentialEquationNumericMethod<N>
         };
 
         while t_i < problem.stop {
-            match self.step_runge_kutta_explicit(&problem, tau, t_i, x_i) {
+            match self.step_explicit(&problem, tau, t_i, x_i) {
                 Ok((t, x)) => {
                     t_i = t;
                     x_i = x.clone();
                     if iterations % save_every == 0 {
-                        solution.t.push(t_i);
-                        solution.x.push(x_i);
+                        solution.t.push(t);
+                        solution.x.push(x);
                         if print_progress {
-                            println!("t: {}, iterations: {}", t_i, iterations)
+                            println!("t: {}, iterations: {}", t, iterations)
                         }
                     }
                 }
@@ -239,7 +259,12 @@ impl<const N: usize, const M: usize> DifferentialEquationNumericMethod<N>
     }
 
     fn get_name(&self) -> String {
-        return self.name.clone();
+        return format!(
+            "{}, order: {}, type: {}",
+            self.name.clone(),
+            self.order,
+            self.solver_type
+        );
     }
 }
 
@@ -477,51 +502,165 @@ impl<const N: usize, const M: usize> DifferentialEquationNumericMethod<N>
 // ################################################
 
 pub struct AdamsMethod<const N: usize> {
-    f: fn(t: f64, &[f64; N]) -> [f64; N],
-    start: f64,
-    stop: f64,
-    tau: f64,
-    x_0: [f64; N],
-    save_every: u32,
-    order: u32,
-    t: std::vec::Vec<f64>,
-    solution: std::vec::Vec<[f64; N]>,
+    order: usize,
+    solver_type: SolverType,
 }
 
 impl<const N: usize> AdamsMethod<N> {
-    fn step_explicit(&mut self) -> Result<(f64, [f64; N]), &'static str> {
-        // let tau: f64 = self.tau;
+    pub fn new(order: usize, solver_type: SolverType) -> Self {
+        Self { order, solver_type }
+    }
 
-        // // let butcher_table: &ButcherTable<M> = self.butcher_table.as_ref().unwrap();
-        // let mut k: [[f64; N]; M] = [[0f64; N]; M];
-        // for i in 0..M {
-        //     let arg_1: f64 = t + tau * butcher_table.c[i];
-        //     let mut arg_2: [f64; N] = [0f64; N];
-
-        //     for a in 0..N {
-        //         for j in 0..i {
-        //             arg_2[a] += butcher_table.a[i][j] * k[j][a];
-        //         }
-        //         arg_2[a] *= tau;
-        //         arg_2[a] += x[a];
-        //     }
-
-        //     k[i] = (self.f)(arg_1, &arg_2);
-        // }
-
-        // let mut res: [f64; N] = [0f64; N];
-        // for j in 0..N {
-        //     for i in 0..M {
-        //         res[j] += butcher_table.b[i] * k[i][j];
-        //     }
-        //     res[j] *= tau;
-        //     res[j] += x[j];
-        // }
-
-        // Ok((t + tau, res))
-        todo!();
+    fn step_explicit(
+        &mut self,
+        problem: &CauchyProblem<N>,
+        tau: f64,
+        t: &std::vec::Vec<f64>,
+        x: &std::vec::Vec<[f64; N]>,
+        order: usize,
+    ) -> Result<(f64, [f64; N]), &'static str> {
+        if t.len() < order {
+            self.step_explicit(problem, tau, t, x, t.len())
+        } else {
+            let n = t.len() - 1;
+            match order {
+                1 => {
+                    let mut x_i: [f64; N] = [0.0; N];
+                    for i in 0..N {
+                        x_i[i] += 1.0 * (problem.f)(t[n - 0], &x[n - 0])[i];
+                        x_i[i] /= 1.0;
+                        x_i[i] *= tau;
+                        x_i[i] += x[n][i];
+                    }
+                    Ok((t[n] + tau, x_i))
+                }
+                2 => {
+                    let mut x_i: [f64; N] = [0.0; N];
+                    for i in 0..N {
+                        x_i[i] += 3.0 * (problem.f)(t[n - 0], &x[n - 0])[i];
+                        x_i[i] -= 1.0 * (problem.f)(t[n - 1], &x[n - 1])[i];
+                        x_i[i] /= 2.0;
+                        x_i[i] *= tau;
+                        x_i[i] += x[n][i];
+                    }
+                    Ok((t[n] + tau, x_i))
+                }
+                3 => {
+                    let mut x_i: [f64; N] = [0.0; N];
+                    for i in 0..N {
+                        x_i[i] += 23.0 * (problem.f)(t[n - 0], &x[n - 0])[i];
+                        x_i[i] -= 16.0 * (problem.f)(t[n - 1], &x[n - 1])[i];
+                        x_i[i] += 05.0 * (problem.f)(t[n - 2], &x[n - 2])[i];
+                        x_i[i] /= 12.0;
+                        x_i[i] *= tau;
+                        x_i[i] += x[n][i];
+                    }
+                    Ok((t[n] + tau, x_i))
+                }
+                4 => {
+                    let mut x_i: [f64; N] = [0.0; N];
+                    for i in 0..N {
+                        x_i[i] += 55.0 * (problem.f)(t[n - 0], &x[n - 0])[i];
+                        x_i[i] -= 59.0 * (problem.f)(t[n - 1], &x[n - 1])[i];
+                        x_i[i] += 37.0 * (problem.f)(t[n - 2], &x[n - 2])[i];
+                        x_i[i] -= 09.0 * (problem.f)(t[n - 3], &x[n - 3])[i];
+                        x_i[i] /= 24.0;
+                        x_i[i] *= tau;
+                        x_i[i] += x[n][i];
+                    }
+                    Ok((t[n] + tau, x_i))
+                }
+                _ => Err("No method with such order"),
+            }
+        }
     }
 }
+
+impl<const N: usize> DifferentialEquationNumericMethod<N> for AdamsMethod<N> {
+    fn solve(
+        &mut self,
+        problem: CauchyProblem<N>,
+        tau: f64,
+        print_progress: bool,
+        save_every: Option<u32>,
+    ) -> (CauchySolution<N>, Result<(), &'static str>) {
+        let mut t_i: Vec<f64> = vec![problem.start];
+        let mut x_i: Vec<[f64; N]> = vec![problem.x_0.clone()];
+        let mut iterations: u32 = 0u32;
+        let save_every = save_every.unwrap_or(1);
+
+        let mut solution: CauchySolution<N> = CauchySolution {
+            t: vec![],
+            x: vec![],
+        };
+
+        while *t_i.last().unwrap() < problem.stop {
+            match self.step_explicit(&problem, tau, &t_i, &x_i, self.order) {
+                Ok((t, x)) => {
+                    t_i.push(t);
+                    x_i.push(x);
+                    if t_i.len() > self.order {
+                        t_i.remove(0);
+                        x_i.remove(0);
+                    }
+                    if iterations % save_every == 0 {
+                        solution.t.push(t);
+                        solution.x.push(x);
+                        if print_progress {
+                            println!("t: {}, iterations: {}", t, iterations)
+                        }
+                    }
+                }
+                Err(a) => {
+                    println!("Failed to solve, reason: {}", a);
+                    return (solution, Err("Failed to solve"));
+                }
+            };
+            iterations += 1;
+        }
+
+        (solution, Ok(()))
+    }
+
+    fn get_name(&self) -> String {
+        return format!("{} Adams methof of order: {}", self.solver_type, self.order,);
+    }
+}
+
+// impl<const N: usize> AdamsMethod<N> {
+//     fn step_explicit(&mut self) -> Result<(f64, [f64; N]), &'static str> {
+//         // let tau: f64 = self.tau;
+
+//         // // let butcher_table: &ButcherTable<M> = self.butcher_table.as_ref().unwrap();
+//         // let mut k: [[f64; N]; M] = [[0f64; N]; M];
+//         // for i in 0..M {
+//         //     let arg_1: f64 = t + tau * butcher_table.c[i];
+//         //     let mut arg_2: [f64; N] = [0f64; N];
+
+//         //     for a in 0..N {
+//         //         for j in 0..i {
+//         //             arg_2[a] += butcher_table.a[i][j] * k[j][a];
+//         //         }
+//         //         arg_2[a] *= tau;
+//         //         arg_2[a] += x[a];
+//         //     }
+
+//         //     k[i] = (self.f)(arg_1, &arg_2);
+//         // }
+
+//         // let mut res: [f64; N] = [0f64; N];
+//         // for j in 0..N {
+//         //     for i in 0..M {
+//         //         res[j] += butcher_table.b[i] * k[i][j];
+//         //     }
+//         //     res[j] *= tau;
+//         //     res[j] += x[j];
+//         // }
+
+//         // Ok((t + tau, res))
+//         todo!();
+//     }
+// }
 
 // impl<const N: usize> DifferentialEquationNumericMethod<N> for AdamsMethod<N> {
 //     fn new(

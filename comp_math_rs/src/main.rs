@@ -76,7 +76,9 @@ fn main() {
         "Kutta's third-order method".to_string(),
     );
 
-    let (solution, res) = solver.solve(problem, 0.00001, true, Some(10000));
+    let mut solver: solvers::AdamsMethod<3> = solvers::AdamsMethod::new(4, SolverType::Explicit);
+
+    let (solution, res) = solver.solve(problem, 0.000001, true, Some(100000));
 
     println!("{:?}", res);
 
