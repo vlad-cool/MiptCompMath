@@ -1,4 +1,4 @@
-use std::vec;
+use std::{f64, vec};
 
 fn close_enough(a: f64, b: f64, epsilon: f64) -> bool {
     (a - b).abs() < epsilon
@@ -13,17 +13,23 @@ fn close_enough_arr<const N: usize>(a: &[f64; N], b: &[f64; N], epsilon: f64) ->
     close_enough(sum, 0f64, epsilon)
 }
 
-pub fn derivative(f: fn(f64) -> f64, x: f64, h: f64) -> f64 {
+pub fn derivative<F>(f: F, x: f64, h: f64) -> f64
+where
+    F: Fn(f64) -> f64,
+{
     (f(x + h) - f(x - h)) / (2f64 * h)
 }
 
-pub fn partial_derivative<const N: usize>(
-    f: fn(&[f64; N]) -> [f64; N],
+pub fn partial_derivative<F, const N: usize>(
+    f: F,
     x: &[f64; N],
     i: usize,
     j: usize,
     h: f64,
-) -> f64 {
+) -> f64
+where
+    F: Fn(&[f64; N]) -> [f64; N],
+{
     let mut x_1: [f64; N] = x.clone();
     let mut x_2: [f64; N] = x.clone();
 
@@ -76,11 +82,14 @@ pub fn solve_linear_system<const N: usize>(a: &[[f64; N]; N], b: &[f64; N]) -> [
     x
 }
 
-fn solve_newton<const N: usize>(
-    f: fn(&[f64; N]) -> [f64; N],
+fn solve_newton<F, const N: usize>(
+    f: F,
     x: &[f64; N],
     max_iterations: Option<u32>,
-) -> Result<[f64; N], &'static str> {
+) -> Result<[f64; N], &'static str>
+where
+    F: Fn(&[f64; N]) -> [f64; N],
+{
     let max_iterations: u32 = max_iterations.unwrap_or(100u32);
 
     let mut x: [f64; N] = x.clone();
@@ -95,7 +104,7 @@ fn solve_newton<const N: usize>(
 
         for i in 0..N {
             for j in 0..N {
-                jacobian[i][j] = -partial_derivative(f, &x, i, j, 1e-5);
+                jacobian[i][j] = -partial_derivative(&f, &x, i, j, 1e-5);
             }
         }
 
@@ -574,6 +583,122 @@ impl<const N: usize> AdamsMethod<N> {
             }
         }
     }
+
+    fn step_implicit(
+        &mut self,
+        problem: &CauchyProblem<N>,
+        tau: f64,
+        t: &std::vec::Vec<f64>,
+        x: &std::vec::Vec<[f64; N]>,
+        order: usize,
+    ) -> Result<(f64, [f64; N]), &'static str> {
+        if t.len() < order {
+            self.step_explicit(problem, tau, t, x, t.len())
+        } else {
+            let n = t.len() - 1;
+            match order {
+                1 => {
+                    let equation = |x_next: &[f64; N]| {
+                        let mut x_i: [f64; N] = [0.0; N];
+
+                        for i in 0..N {
+                            x_i[i] += 1.0 * (problem.f)(t[n - 0] + tau, x_next)[i];
+                            x_i[i] /= 1.0;
+                            x_i[i] *= tau;
+                            x_i[i] += x[n][i];
+                            x_i[i] -= x_next[i];
+                        }
+
+                        x_i
+                    };
+
+                    match solve_newton(equation, &x[n - 1], None) {
+                        Ok(x) => Ok((t[n] + tau, x)),
+                        Err(err) => {
+                            println!("Failed to solve, {}", err);
+                            Err("Failed to solve")
+                        }
+                    }
+                }
+                2 => {
+                    let equation = |x_next: &[f64; N]| {
+                        let mut x_i: [f64; N] = [0.0; N];
+
+                        for i in 0..N {
+                            x_i[i] += 1.0 * (problem.f)(t[n - 0] + tau, x_next)[i];
+                            x_i[i] += 1.0 * (problem.f)(t[n - 0], &x[n - 0])[i];
+                            x_i[i] /= 2.0;
+                            x_i[i] *= tau;
+                            x_i[i] += x[n][i];
+                            x_i[i] -= x_next[i];
+                        }
+
+                        x_i
+                    };
+
+                    match solve_newton(equation, &x[n - 1], None) {
+                        Ok(x) => Ok((t[n] + tau, x)),
+                        Err(err) => {
+                            println!("Failed to solve, {}", err);
+                            Err("Failed to solve")
+                        }
+                    }
+                }
+                3 => {
+                    let equation = |x_next: &[f64; N]| {
+                        let mut x_i: [f64; N] = [0.0; N];
+
+                        for i in 0..N {
+                            x_i[i] += 5.0 * (problem.f)(t[n - 0] + tau, x_next)[i];
+                            x_i[i] += 8.0 * (problem.f)(t[n - 0], &x[n - 0])[i];
+                            x_i[i] -= 1.0 * (problem.f)(t[n - 1], &x[n - 1])[i];
+                            x_i[i] /= 12.0;
+                            x_i[i] *= tau;
+                            x_i[i] += x[n][i];
+                            x_i[i] -= x_next[i];
+                        }
+
+                        x_i
+                    };
+
+                    match solve_newton(equation, &x[n - 1], None) {
+                        Ok(x) => Ok((t[n] + tau, x)),
+                        Err(err) => {
+                            println!("Failed to solve, {}", err);
+                            Err("Failed to solve")
+                        }
+                    }
+                }
+                4 => {
+                    let equation = |x_next: &[f64; N]| {
+                        let mut x_i: [f64; N] = [0.0; N];
+
+                        for i in 0..N {
+                            x_i[i] += 09.0 * (problem.f)(t[n - 0] + tau, x_next)[i];
+                            x_i[i] += 19.0 * (problem.f)(t[n - 0], &x[n - 0])[i];
+                            x_i[i] -= 05.0 * (problem.f)(t[n - 1], &x[n - 1])[i];
+                            x_i[i] += 01.0 * (problem.f)(t[n - 2], &x[n - 2])[i];
+                            x_i[i] /= 24.0;
+                            x_i[i] *= tau;
+                            x_i[i] += x[n][i];
+                            x_i[i] -= x_next[i];
+                        }
+
+                        x_i
+                    };
+
+                    match solve_newton(equation, &x[n - 1], None) {
+                        Ok(x) => Ok((t[n] + tau, x)),
+                        Err(err) => {
+                            println!("Failed to solve, {}", err);
+                            Err("Failed to solve")
+                        }
+                    }
+                }
+                _ => Err("No method with such order"),
+            }
+        }
+    }
 }
 
 impl<const N: usize> DifferentialEquationNumericMethod<N> for AdamsMethod<N> {
@@ -595,7 +720,12 @@ impl<const N: usize> DifferentialEquationNumericMethod<N> for AdamsMethod<N> {
         };
 
         while *t_i.last().unwrap() < problem.stop {
-            match self.step_explicit(&problem, tau, &t_i, &x_i, self.order) {
+            let res = match self.solver_type {
+                SolverType::Explicit => self.step_explicit(&problem, tau, &t_i, &x_i, self.order),
+                SolverType::Implicit => self.step_implicit(&problem, tau, &t_i, &x_i, self.order),
+            };
+
+            match res {
                 Ok((t, x)) => {
                     t_i.push(t);
                     x_i.push(x);

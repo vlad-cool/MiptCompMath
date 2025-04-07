@@ -69,16 +69,16 @@ fn main() {
     };
 
     let mut solver: solvers::RungeKuttaMethod<3, 3> = solvers::RungeKuttaMethod::new(
-        3,
+        4,
         [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [-1.0, 2.0, 0.0]],
         [1f64 / 6f64, 2f64 / 3f64, 1f64 / 6f64],
         [0f64, 0.5f64, 1f64],
         "Kutta's third-order method".to_string(),
     );
 
-    let mut solver: solvers::AdamsMethod<3> = solvers::AdamsMethod::new(4, SolverType::Explicit);
+    let mut solver: solvers::AdamsMethod<3> = solvers::AdamsMethod::new(4, SolverType::Implicit);
 
-    let (solution, res) = solver.solve(problem, 0.000001, true, Some(100000));
+    let (solution, res) = solver.solve(problem, 0.00001, true, Some(100000));
 
     println!("{:?}", res);
 
