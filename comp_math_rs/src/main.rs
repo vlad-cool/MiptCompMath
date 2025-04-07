@@ -18,17 +18,64 @@ fn f(t: f64, x: &[f64; 3]) -> [f64; 3] {
 }
 
 fn main() {
-    let mut solver: solvers::RungeKuttaMethod<3, 3> =
-        solvers::RungeKuttaMethod::new(f, 0f64, 800f64, 0.000005f64, &[0.5f64, 0.5f64, 0.5f64], 3, Some(10000u32));
+    // let mut solver: solvers::RungeKuttaMethod<3, 2> = solvers::RungeKuttaMethod::new(
+    //     f,
+    //     0f64,
+    //     800f64,
+    //     0.000005f64,
+    //     &[0.5f64, 0.5f64, 0.5f64],
+    //     3,
+    //     Some(10000u32),
+    // );
 
-    solver.set_butcher_table(solvers::ButcherTable::<3>::new(
+    // solver.set_butcher_table(solvers::ButcherTable::<2>::new(
+    //     [
+    //         [0.0, 0.0],
+    //         [1.0, 0.0]
+    //     ],
+    //     [0.0, 1.0],
+    //     [0.5, 0.5],
+    // ));
+
+    // let mut solver: solvers::RungeKuttaMethod<3, 3> = solvers::RungeKuttaMethod::new(
+    //     f,
+    //     0f64,
+    //     800f64,
+    //     0.000005f64,
+    //     &[0.5f64, 0.5f64, 0.5f64],
+    //     3,
+    //     Some(10000u32),
+    // );
+
+    // solver.set_butcher_table(solvers::ButcherTable::<3>::new(
+    //     [
+    //         [0f64, 0f64, 0f64],
+    //         [0.5f64, 0f64, 0f64],
+    //         [-1f64, 2f64, 0f64],
+    //     ],
+    //     [1f64 / 6f64, 2f64 / 3f64, 1f64 / 6f64],
+    //     [0f64, 0.5f64, 1f64],
+    // ));
+
+    let mut solver: solvers::RungeKuttaMethod<3, 4> = solvers::RungeKuttaMethod::new(
+        f,
+        0f64,
+        800f64,
+        0.000005f64,
+        &[0.5f64, 0.5f64, 0.5f64],
+        4,
+        Some(10000u32),
+    );
+    
+    solver.set_butcher_table(solvers::ButcherTable::<4>::new(
         [
-            [0f64, 0f64, 0f64],
-            [0.5f64, 0f64, 0f64],
-            [-1f64, 2f64, 0f64],
+            [0f64, 0f64, 0f64, 0f64],
+            [0.5f64, 0f64, 0f64, 0f64],
+            [0f64, 0.5f64, 0f64, 0f64],
+            [0f64, 0f64, 1f64, 0f64],
         ],
-        [0f64, 0.5f64, 1f64],
-        [1f64 / 6f64, 2f64 / 3f64, 1f64 / 6f64],
+        [1f64 / 6f64, 1f64 / 3f64, 1f64 / 3f64, 1f64 / 6f64],
+        [0f64, 1f64 / 2f64, 1f64 / 2f64, 1f64],
     ));
 
     let mut file = std::fs::File::create("test.csv").unwrap();
@@ -38,6 +85,7 @@ fn main() {
     let (t, x) = solver.get_solution();
 
     for i in 0..t.len() {
-        file.write(format!("{}, {}, {}, {}\n", t[i], x[i][0], x[i][1], x[i][2]).as_bytes());
+        file.write(format!("{}, {}, {}, {}\n", t[i], x[i][0], x[i][1], x[i][2]).as_bytes())
+            .expect("failed to write to file");
     }
 }

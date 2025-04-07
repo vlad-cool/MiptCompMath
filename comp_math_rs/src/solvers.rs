@@ -178,11 +178,9 @@ impl<const N: usize, const M: usize> RungeKuttaMethod<N, M> {
     }
 
     fn step_runge_kutta_explicit(&mut self, t: f64, x: [f64; N]) -> Result<(f64, [f64; N]), &'static str> {
-        // let t = self.t.last().unwrap();
-        // let x = self.solution.last().unwrap();
-        let tau = self.tau;
+        let tau: f64 = self.tau;
 
-        let butcher_table = self.butcher_table.as_ref().unwrap();
+        let butcher_table: &ButcherTable<M> = self.butcher_table.as_ref().unwrap();
         let mut k: [[f64; N]; M] = [[0f64; N]; M];
         for i in 0..M {
             let arg_1: f64 = t + tau * butcher_table.c[i];
@@ -199,7 +197,7 @@ impl<const N: usize, const M: usize> RungeKuttaMethod<N, M> {
             k[i] = (self.f)(arg_1, &arg_2);
         }
 
-        let mut res = [0f64; N];
+        let mut res: [f64; N] = [0f64; N];
         for j in 0..N
         {
             for i in 0..M {
