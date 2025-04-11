@@ -41,49 +41,6 @@ fn write_csv<const N: usize>(
 }
 
 fn main() {
-    // let mut solver: solvers::RungeKuttaMethod<3, 3> = solvers::RungeKuttaMethod::new(
-    //     f,
-    //     0f64,
-    //     800f64,
-    //     0.000005f64,
-    //     &[0.5f64, 0.5f64, 0.5f64],
-    //     3,
-    //     Some(10000u32),
-    // );
-
-    // solver.set_butcher_table(solvers::ButcherTable::<3>::new(
-    //     [
-    //         [0f64, 0f64, 0f64],
-    //         [0.5f64, 0f64, 0f64],
-    //         [-1f64, 2f64, 0f64],
-    //     ],
-    //     [1f64 / 6f64, 2f64 / 3f64, 1f64 / 6f64],
-    //     [0f64, 0.5f64, 1f64],
-    //     "Kutta's third-order method",
-    // ));
-
-    // let mut solver: solvers::RungeKuttaMethod<3, 4> = solvers::RungeKuttaMethod::new(
-    //     f,
-    //     0f64,
-    //     800f64,
-    //     0.000005f64,
-    //     &[0.5f64, 0.5f64, 0.5f64],
-    //     4,
-    //     Some(10000u32),
-    // );
-
-    // solver.set_butcher_table(solvers::ButcherTable::<4>::new(
-    //     [
-    //         [0f64, 0f64, 0f64, 0f64],
-    //         [0.5f64, 0f64, 0f64, 0f64],
-    //         [0f64, 0.5f64, 0f64, 0f64],
-    //         [0f64, 0f64, 1f64, 0f64],
-    //     ],
-    //     [1f64 / 6f64, 1f64 / 3f64, 1f64 / 3f64, 1f64 / 6f64],
-    //     [0f64, 1f64 / 2f64, 1f64 / 2f64, 1f64],
-    //     "Classic fourth-order method",
-    // ));
-
     let problem: CauchyProblem<3> = CauchyProblem {
         f,
         start: 0.0,
@@ -96,7 +53,7 @@ fn main() {
         [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [-1.0, 2.0, 0.0]],
         [1f64 / 6f64, 2f64 / 3f64, 1f64 / 6f64],
         [0f64, 0.5f64, 1f64],
-        "Kutta's third-order method".to_string(),
+        "Kutta's third-order method (Explicit)".to_string(),
     );
     let tau: f64 = 0.00001;
     let save_every: u32 = (0.01f64 / tau).round() as u32;
@@ -115,20 +72,39 @@ fn main() {
     let tau: f64 = 0.00001;
     let save_every: u32 = (0.01f64 / tau).round() as u32;
     let start_time: std::time::Instant = std::time::Instant::now();
-    let (solution, res) = solver.solve(&problem, tau, true, Some(save_every));
+    let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
+    println!("{:?}", res);
+    write_csv("Runge-Kutta".to_string(), solution, tau, start_time.elapsed());
+    
+    let mut solver: solvers::RungeKuttaMethod<3, 4, 12> = solvers::RungeKuttaMethod::new(
+        3,
+        [
+            [0.5, 0.0, 0.0, 0.0], 
+            [1.0 / 6.0, 0.5, 0.0, 0.0],
+            [-0.5, 0.5, 0.5, 0.0],
+            [1.5, -1.5, 0.5, 0.5]
+        ],
+        [1.5, -1.5, 0.5, 0.5],
+        [0.5, 2.0 / 3.0, 0.5, 1.0],
+        "Four-stage, 3rd order, L-stable, Diagonally Implicit Runge-Kutta method".to_string(),
+    );
+    let tau: f64 = 0.01;
+    let save_every: u32 = (0.01f64 / tau).round() as u32;
+    let start_time: std::time::Instant = std::time::Instant::now();
+    let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
     println!("{:?}", res);
     write_csv("Runge-Kutta".to_string(), solution, tau, start_time.elapsed());
 
-    // for order in 1..5 {
-    //     let mut solver: solvers::AdamsMethod<3> =
-    //         solvers::AdamsMethod::new(order, solvers::SolverType::Explicit);
-    //     let tau: f64 = 0.000001;
-    //     let save_every: u32 = (0.01f64 / tau).round() as u32;
-    //     let start_time: std::time::Instant = std::time::Instant::now();
-    //     let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
-    //     println!("{:?}", res);
-    //     write_csv("Explicit Adams".to_string(), solution, tau, start_time.elapsed());
-    // }
+    for order in 1..5 {
+        let mut solver: solvers::AdamsMethod<3> =
+            solvers::AdamsMethod::new(order, solvers::SolverType::Explicit);
+        let tau: f64 = 0.000001;
+        let save_every: u32 = (0.01f64 / tau).round() as u32;
+        let start_time: std::time::Instant = std::time::Instant::now();
+        let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
+        println!("{:?}", res);
+        write_csv("Explicit Adams".to_string(), solution, tau, start_time.elapsed());
+    }
     
     for order in 1..5 {
         let mut solver: solvers::AdamsMethod<3> =
@@ -139,5 +115,27 @@ fn main() {
         let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
         println!("{:?}", res);
         write_csv("Implicit Adams".to_string(), solution, tau, start_time.elapsed());
+    }
+
+    for order in 1..3 {
+        let mut solver: solvers::BackwardDifferentiationMethod<3> =
+            solvers::BackwardDifferentiationMethod::new(order, solvers::SolverType::Explicit);
+        let tau: f64 = 0.000001;
+        let save_every: u32 = (0.01f64 / tau).round() as u32;
+        let start_time: std::time::Instant = std::time::Instant::now();
+        let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
+        println!("{:?}", res);
+        write_csv("Explicit Backward Differentiation Method".to_string(), solution, tau, start_time.elapsed());
+    }
+    
+    for order in 1..4 {
+        let mut solver: solvers::BackwardDifferentiationMethod<3> =
+            solvers::BackwardDifferentiationMethod::new(order, solvers::SolverType::Implicit);
+        let tau: f64 = 0.01;
+        let save_every: u32 = (0.01f64 / tau).round() as u32;
+        let start_time: std::time::Instant = std::time::Instant::now();
+        let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
+        println!("{:?}", res);
+        write_csv("Implicit Backward Differentiation Method".to_string(), solution, tau, start_time.elapsed());
     }
 }
