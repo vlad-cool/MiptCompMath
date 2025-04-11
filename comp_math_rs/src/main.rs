@@ -4,17 +4,12 @@ use solvers::*;
 
 mod solvers;
 
-// fn f(t: f64, x: &[f64; 2]) -> [f64; 2] {
-//     [x[1], std::f64::consts::E * (1f64 - x[0] * x[0]) * x[1] - x[0]]
-// }
-
 fn f(_t: f64, x: &[f64; 3]) -> [f64; 3] {
     [
         77.27 * (x[1] + x[0] * (1.0 - 8.375e-6 * x[0] - x[1])),
         1.0 / 77.27 * (x[2] - (1.0 + x[0]) * x[1]),
         0.161 * (x[0] - x[2]),
     ]
-    // [x[1], std::f64::consts::E * (1f64 - x[0] * x[0]) * x[1] - x[0]]
 }
 
 fn main() {
@@ -62,7 +57,7 @@ fn main() {
     // ));
 
     let problem: CauchyProblem<3> = CauchyProblem {
-        f: f,
+        f,
         start: 0.0,
         stop: 800.0,
         x_0: [0.5, 0.5, 0.5],
@@ -75,14 +70,14 @@ fn main() {
         [0f64, 0.5f64, 1f64],
         "Kutta's third-order method".to_string(),
     );
-
-    let mut solver: solvers::AdamsMethod<3> = solvers::AdamsMethod::new(4, SolverType::Implicit);
-
-    let (solution, res) = solver.solve(problem, 0.00001, true, Some(100000));
-
+    let (solution, res) = solver.solve(&problem, 0.00001, false, Some(100000));
     println!("{:?}", res);
-
-    let mut file = std::fs::File::create("test.csv").unwrap();
+    let mut file = std::fs::File::create(format!("../task6_2_data/{}.csv", solution.method_name))
+        .expect("Failed to open file");
+    file.write("Runge-Kutta methods\n".as_bytes())
+        .expect("failed to wrtite to file");
+    file.write(format!("{}\n", solution.method_name).as_bytes())
+        .expect("failed to write to file");
     for i in 0..solution.t.len() {
         file.write(
             format!(
@@ -93,4 +88,50 @@ fn main() {
         )
         .expect("failed to write to file");
     }
+
+    for order in 1..5 {
+        let mut solver: solvers::AdamsMethod<3> =
+            solvers::AdamsMethod::new(order, solvers::SolverType::Explicit);
+        let (solution, res) = solver.solve(&problem, 0.00001, false, Some(1000));
+        println!("{:?}", res);
+        let mut file = std::fs::File::create(format!("../task6_2_data/{}.csv", solution.method_name))
+            .expect("Failed to open file");
+        file.write("Explicit Adams methods\n".as_bytes())
+            .expect("failed to wrtite to file");
+        file.write(format!("{}\n", solution.method_name).as_bytes())
+            .expect("failed to write to file");
+        for i in 0..solution.t.len() {
+            file.write(
+                format!(
+                    "{}, {}, {}, {}\n",
+                    solution.t[i], solution.x[i][0], solution.x[i][1], solution.x[i][2]
+                )
+                .as_bytes(),
+            )
+            .expect("failed to write to file");
+        }
+    }
+
+    // for order in 1..5 {
+    //     let mut solver: solvers::AdamsMethod<3> =
+    //         solvers::AdamsMethod::new(order, solvers::SolverType::Implicit);
+    //     let (solution, res) = solver.solve(&problem, 0.01, false, Some(1));
+    //     println!("{:?}", res);
+    //     let mut file = std::fs::File::create(format!("../task6_2_data/{}.csv", solution.method_name))
+    //         .expect("Failed to open file");
+    //     file.write("Implicit Adams methods".as_bytes())
+    //         .expect("failed to wrtite to file");
+    //     file.write(format!("{}\n", solution.method_name).as_bytes())
+    //         .expect("failed to write to file");
+    //     for i in 0..solution.t.len() {
+    //         file.write(
+    //             format!(
+    //                 "{}, {}, {}, {}\n",
+    //                 solution.t[i], solution.x[i][0], solution.x[i][1], solution.x[i][2]
+    //             )
+    //             .as_bytes(),
+    //         )
+    //         .expect("failed to write to file");
+    //     }
+    // }
 }

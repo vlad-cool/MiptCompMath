@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{f64, vec};
 
 fn close_enough(a: f64, b: f64, epsilon: f64) -> bool {
@@ -20,13 +21,7 @@ where
     (f(x + h) - f(x - h)) / (2f64 * h)
 }
 
-pub fn partial_derivative<F, const N: usize>(
-    f: F,
-    x: &[f64; N],
-    i: usize,
-    j: usize,
-    h: f64,
-) -> f64
+pub fn partial_derivative<F, const N: usize>(f: F, x: &[f64; N], i: usize, j: usize, h: f64) -> f64
 where
     F: Fn(&[f64; N]) -> [f64; N],
 {
@@ -130,12 +125,13 @@ pub struct CauchyProblem<const N: usize> {
 pub struct CauchySolution<const N: usize> {
     pub t: std::vec::Vec<f64>,
     pub x: std::vec::Vec<[f64; N]>,
+    pub method_name: String,
 }
 
 pub trait DifferentialEquationNumericMethod<const N: usize> {
     fn solve(
         &mut self,
-        problem: CauchyProblem<N>,
+        problem: &CauchyProblem<N>,
         tau: f64,
         print_progress: bool,
         save_every: Option<u32>,
@@ -228,7 +224,7 @@ impl<const N: usize, const M: usize> DifferentialEquationNumericMethod<N>
 {
     fn solve(
         &mut self,
-        problem: CauchyProblem<N>,
+        problem: &CauchyProblem<N>,
         tau: f64,
         print_progress: bool,
         save_every: Option<u32>,
@@ -241,7 +237,12 @@ impl<const N: usize, const M: usize> DifferentialEquationNumericMethod<N>
         let mut solution: CauchySolution<N> = CauchySolution {
             t: vec![],
             x: vec![],
+            method_name: self.get_name(),
         };
+
+        if print_progress {
+            println!("");
+        }
 
         while t_i < problem.stop {
             match self.step_explicit(&problem, tau, t_i, x_i) {
@@ -252,7 +253,7 @@ impl<const N: usize, const M: usize> DifferentialEquationNumericMethod<N>
                         solution.t.push(t);
                         solution.x.push(x);
                         if print_progress {
-                            println!("t: {}, iterations: {}", t, iterations)
+                            print!("t: {}, iterations: {}\r", t, iterations)
                         }
                     }
                 }
@@ -704,7 +705,7 @@ impl<const N: usize> AdamsMethod<N> {
 impl<const N: usize> DifferentialEquationNumericMethod<N> for AdamsMethod<N> {
     fn solve(
         &mut self,
-        problem: CauchyProblem<N>,
+        problem: &CauchyProblem<N>,
         tau: f64,
         print_progress: bool,
         save_every: Option<u32>,
@@ -717,7 +718,12 @@ impl<const N: usize> DifferentialEquationNumericMethod<N> for AdamsMethod<N> {
         let mut solution: CauchySolution<N> = CauchySolution {
             t: vec![],
             x: vec![],
+            method_name: self.get_name(),
         };
+
+        if print_progress {
+            println!("");
+        }
 
         while *t_i.last().unwrap() < problem.stop {
             let res = match self.solver_type {
@@ -737,7 +743,7 @@ impl<const N: usize> DifferentialEquationNumericMethod<N> for AdamsMethod<N> {
                         solution.t.push(t);
                         solution.x.push(x);
                         if print_progress {
-                            println!("t: {}, iterations: {}", t, iterations)
+                            print!("t: {}, iterations: {}\r", t, iterations)
                         }
                     }
                 }

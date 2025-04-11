@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 
-[lib]
-name = "comp_math_rs"
-path = "src/solvers.rs"
+# [lib]
+# name = "comp_math_rs"
+# path = "src/solvers.rs"
 
 [[bin]]
 name = "comp_math_rs"
