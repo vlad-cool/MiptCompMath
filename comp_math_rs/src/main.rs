@@ -14,11 +14,12 @@ fn f(_t: f64, x: &[f64; 3]) -> [f64; 3] {
 
 fn write_csv<const N: usize>(
     group: String,
+    path: String,
     solution: CauchySolution<N>,
     tau: f64,
     time: std::time::Duration,
 ) {
-    let mut file = std::fs::File::create(format!("../task6_2_data/{}.csv", solution.method_name))
+    let mut file = std::fs::File::create(format!("../task6_2_data/{}.csv", path))
         .expect("Failed to open file");
     file.write(format!("{}\n", group).as_bytes())
         .expect("failed to wrtite to file");
@@ -48,9 +49,10 @@ fn main() {
         x_0: [0.5, 0.5, 0.5],
     };
 
+    let mut index: u32 = 0;
     let count_all: bool = std::env::args().any(|arg| arg == "--compute-all");
 
-    // if count_all {
+    if count_all {
         let mut solver: solvers::RungeKuttaMethod<3, 3, 9> = solvers::RungeKuttaMethod::new(
             4,
             [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [-1.0, 2.0, 0.0]],
@@ -65,11 +67,13 @@ fn main() {
         println!("{:?}", res);
         write_csv(
             "Runge-Kutta".to_string(),
+            format!("{}", index),
             solution,
             tau,
             start_time.elapsed(),
         );
-    // }
+        index += 1;
+    }
 
     if count_all {
         let mut solver: solvers::RungeKuttaMethod<3, 2, 6> = solvers::RungeKuttaMethod::new(
@@ -86,10 +90,12 @@ fn main() {
         println!("{:?}", res);
         write_csv(
             "Runge-Kutta".to_string(),
+            format!("{}", index),
             solution,
             tau,
             start_time.elapsed(),
         );
+        index += 1;
     }
 
     let mut solver: solvers::RungeKuttaMethod<3, 4, 12> = solvers::RungeKuttaMethod::new(
@@ -111,10 +117,12 @@ fn main() {
     println!("{:?}", res);
     write_csv(
         "Runge-Kutta".to_string(),
+        format!("{}", index),
         solution,
         tau,
         start_time.elapsed(),
     );
+    index += 1;
 
     if count_all {
         for order in 1..5 {
@@ -127,10 +135,12 @@ fn main() {
             println!("{:?}", res);
             write_csv(
                 "Explicit Adams".to_string(),
+                format!("{}", index),
                 solution,
                 tau,
                 start_time.elapsed(),
             );
+            index += 1;
         }
     }
 
@@ -144,10 +154,12 @@ fn main() {
         println!("{:?}", res);
         write_csv(
             "Implicit Adams".to_string(),
+            format!("{}", index),
             solution,
             tau,
             start_time.elapsed(),
         );
+        index += 1;
     }
 
     if count_all {
@@ -161,10 +173,12 @@ fn main() {
             println!("{:?}", res);
             write_csv(
                 "Explicit Backward Differentiation Method".to_string(),
+                format!("{}", index),
                 solution,
                 tau,
                 start_time.elapsed(),
             );
+            index += 1;
         }
     }
 
@@ -178,9 +192,11 @@ fn main() {
         println!("{:?}", res);
         write_csv(
             "Implicit Backward Differentiation Method".to_string(),
+            format!("{}", index),
             solution,
             tau,
             start_time.elapsed(),
         );
+        index += 1;
     }
 }
