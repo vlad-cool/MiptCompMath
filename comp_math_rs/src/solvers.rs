@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{f64, vec};
+use std::{f64, io::Write, vec};
 
 fn unflatten<const A: usize, const B: usize>(flat: &[f64]) -> [[f64; A]; B] {
     assert!(flat.len() == A * B);
@@ -91,7 +91,7 @@ pub fn solve_linear_system<const N: usize>(a: &[[f64; N]; N], b: &[f64; N]) -> [
     x
 }
 
-fn solve_newton<F, const N: usize>(
+pub fn solve_newton<F, const N: usize>(
     f: F,
     x: &[f64; N],
     max_iterations: Option<u32>,
@@ -1251,14 +1251,40 @@ impl<const N: usize> NordsieckMethod<N> {
 
             let z_col: Vec<Vec<f64>> = matrix_transpose(&vec![z_next.clone()]);
 
+            // println!("P: {:?}", p);
+            // println!("R: {:?}", identity);
+            // println!("z_col: {:?}", z_col);
+            // println!("E tim_cirx: {:?}", tensor_product(&matrix_product(&e, &p), &identity));
+            // println!("e_1: {:?}", e);
+
+            // println!("P: {}x{}", p.len(), p[0].len());
+            // println!("E: {}x{}", identity.len(), identity[0].len());
+            // println!("z_col: {}x{}", z_col.len(), z_col[0].len());
+            // println!("E tim_cirx: {}x{}", tensor_product(&matrix_product(&e, &p), &identity).len(), tensor_product(&matrix_product(&e, &p), &identity)[0].len());
+            // println!("e_1: {}x{}", e.len(), e[0].len());
+
+            std::io::stdout().flush().unwrap();
+
             let a: Vec<Vec<f64>> = matrix_product(&tensor_product(&p, &identity), &z_col);
             let b: Vec<Vec<f64>> = tensor_product(&vec![self.l.clone()], &identity);
-            let c: Vec<Vec<f64>> = matrix_scale(&vec![(problem.f)(t + tau, &x_next).to_vec()], tau);
+            let c: Vec<Vec<f64>> = matrix_transpose(&matrix_scale(
+                &vec![(problem.f)(t + tau, &x_next).to_vec()],
+                tau,
+            ));
             let d: Vec<Vec<f64>> =
                 matrix_product(&tensor_product(&matrix_product(&e, &p), &identity), &z_col);
-            let e = matrix_product(&b, &matrix_sub(&c, &d));
-            let f = matrix_sum(&a, &e);
-            let g = matrix_sub(&f, &z_col);
+
+            // println!("###########################");
+            // println!("b: {:?}", b);
+            // println!("b: {}x{}", b.len(), b[0].len());
+            // println!("c: {:?}", c);
+            // println!("c: {}x{}", c.len(), c[0].len());
+            std::io::stdout().flush().unwrap();
+            let b = matrix_transpose(&b);
+
+            let e: Vec<Vec<f64>> = matrix_product(&b, &matrix_sub(&c, &d));
+            let f: Vec<Vec<f64>> = matrix_sum(&a, &e);
+            let g: Vec<Vec<f64>> = matrix_sub(&f, &z_col);
             matrix_transpose(&g)[0].clone()
         };
 
@@ -1302,7 +1328,7 @@ impl<const N: usize> DifferentialEquationNumericMethod<N> for NordsieckMethod<N>
         let mut iterations: u32 = 0u32;
         let save_every = save_every.unwrap_or(1);
 
-        let mut z = vec![[0.0; N]; problem.x_0.len()];
+        let mut z = vec![[0.0; N]; self.l.len()];
 
         for i in 0..problem.x_0.len() {
             z[i][0] = problem.x_0[0];
@@ -1329,7 +1355,8 @@ impl<const N: usize> DifferentialEquationNumericMethod<N> for NordsieckMethod<N>
             // };
 
             // let res = self.step(problem, tau, &t_i,&z);
-            let res: Result<(f64, Vec<[f64; N]>), &str> = self.step(problem, tau, *t_i.last().unwrap(), &z);
+            let res: Result<(f64, Vec<[f64; N]>), &str> =
+                self.step(problem, tau, *t_i.last().unwrap(), &z);
 
             match res {
                 Ok((t, z_new)) => {

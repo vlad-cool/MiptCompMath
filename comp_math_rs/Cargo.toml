@@ -3,13 +3,12 @@ name = "comp_math_rs"
 version = "0.1.0"
 edition = "2024"
 
-
-# [lib]
-# name = "comp_math_rs"
-# path = "src/solvers.rs"
+[[bin]]
+name = "task6_2"
+path = "src/task6_2.rs"
 
 [[bin]]
-name = "comp_math_rs"
-path = "src/main.rs"
+name = "task7_1"
+path = "src/task7_1.rs"
 
 [dependencies]
