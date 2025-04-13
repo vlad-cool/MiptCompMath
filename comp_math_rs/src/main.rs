@@ -14,11 +14,12 @@ fn f(_t: f64, x: &[f64; 3]) -> [f64; 3] {
 
 fn write_csv<const N: usize>(
     group: String,
+    path: String,
     solution: CauchySolution<N>,
     tau: f64,
     time: std::time::Duration,
 ) {
-    let mut file = std::fs::File::create(format!("../task6_2_data/{}.csv", solution.method_name))
+    let mut file = std::fs::File::create(format!("../task6_2_data/{}.csv", path))
         .expect("Failed to open file");
     file.write(format!("{}\n", group).as_bytes())
         .expect("failed to wrtite to file");
@@ -48,6 +49,8 @@ fn main() {
         x_0: [0.5, 0.5, 0.5],
     };
 
+    let mut index: u32 = 0;
+
     let mut solver: solvers::RungeKuttaMethod<3, 3, 9> = solvers::RungeKuttaMethod::new(
         4,
         [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [-1.0, 2.0, 0.0]],
@@ -60,29 +63,43 @@ fn main() {
     let start_time: std::time::Instant = std::time::Instant::now();
     let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
     println!("{:?}", res);
-    write_csv("Runge-Kutta".to_string(), solution, tau, start_time.elapsed());
-
-    let mut solver: solvers::RungeKuttaMethod<3, 2, 6> = solvers::RungeKuttaMethod::new(
-        2,
-        [[0.0, 0.0], [0.5, 0.5]],
-        [0.0f64, 1.0f64],
-        [0.5f64, 0.5f64],
-        "Crank-Nikolson method".to_string(),
+    write_csv(
+        "Runge-Kutta".to_string(),
+        format!("{}", index),
+        solution,
+        tau,
+        start_time.elapsed(),
     );
-    let tau: f64 = 0.00001;
-    let save_every: u32 = (0.01f64 / tau).round() as u32;
-    let start_time: std::time::Instant = std::time::Instant::now();
-    let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
-    println!("{:?}", res);
-    write_csv("Runge-Kutta".to_string(), solution, tau, start_time.elapsed());
-    
+    index += 1;
+
+    // let mut solver: solvers::RungeKuttaMethod<3, 2, 6> = solvers::RungeKuttaMethod::new(
+    //     2,
+    //     [[0.0, 0.0], [0.5, 0.5]],
+    //     [0.0f64, 1.0f64],
+    //     [0.5f64, 0.5f64],
+    //     "Crank-Nikolson method".to_string(),
+    // );
+    // let tau: f64 = 0.00001;
+    // let save_every: u32 = (0.01f64 / tau).round() as u32;
+    // let start_time: std::time::Instant = std::time::Instant::now();
+    // let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
+    // println!("{:?}", res);
+    // write_csv(
+    //     "Runge-Kutta".to_string(),
+    //     format!("{}", index),
+    //     solution,
+    //     tau,
+    //     start_time.elapsed(),
+    // );
+    // index += 1;
+
     let mut solver: solvers::RungeKuttaMethod<3, 4, 12> = solvers::RungeKuttaMethod::new(
         3,
         [
-            [0.5, 0.0, 0.0, 0.0], 
+            [0.5, 0.0, 0.0, 0.0],
             [1.0 / 6.0, 0.5, 0.0, 0.0],
             [-0.5, 0.5, 0.5, 0.0],
-            [1.5, -1.5, 0.5, 0.5]
+            [1.5, -1.5, 0.5, 0.5],
         ],
         [1.5, -1.5, 0.5, 0.5],
         [0.5, 2.0 / 3.0, 0.5, 1.0],
@@ -93,7 +110,14 @@ fn main() {
     let start_time: std::time::Instant = std::time::Instant::now();
     let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
     println!("{:?}", res);
-    write_csv("Runge-Kutta".to_string(), solution, tau, start_time.elapsed());
+    write_csv(
+        "Runge-Kutta".to_string(),
+        format!("{}", index),
+        solution,
+        tau,
+        start_time.elapsed(),
+    );
+    index += 1;
 
     for order in 1..5 {
         let mut solver: solvers::AdamsMethod<3> =
@@ -103,9 +127,16 @@ fn main() {
         let start_time: std::time::Instant = std::time::Instant::now();
         let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
         println!("{:?}", res);
-        write_csv("Explicit Adams".to_string(), solution, tau, start_time.elapsed());
+        write_csv(
+            "Explicit Adams".to_string(),
+            format!("{}", index),
+            solution,
+            tau,
+            start_time.elapsed(),
+        );
+        index += 1;
     }
-    
+
     for order in 1..5 {
         let mut solver: solvers::AdamsMethod<3> =
             solvers::AdamsMethod::new(order, solvers::SolverType::Implicit);
@@ -114,7 +145,14 @@ fn main() {
         let start_time: std::time::Instant = std::time::Instant::now();
         let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
         println!("{:?}", res);
-        write_csv("Implicit Adams".to_string(), solution, tau, start_time.elapsed());
+        write_csv(
+            "Implicit Adams".to_string(),
+            format!("{}", index),
+            solution,
+            tau,
+            start_time.elapsed(),
+        );
+        index += 1;
     }
 
     for order in 1..3 {
@@ -125,9 +163,16 @@ fn main() {
         let start_time: std::time::Instant = std::time::Instant::now();
         let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
         println!("{:?}", res);
-        write_csv("Explicit Backward Differentiation Method".to_string(), solution, tau, start_time.elapsed());
+        write_csv(
+            "Explicit Backward Differentiation Method".to_string(),
+            format!("{}", index),
+            solution,
+            tau,
+            start_time.elapsed(),
+        );
+        index += 1;
     }
-    
+
     for order in 1..4 {
         let mut solver: solvers::BackwardDifferentiationMethod<3> =
             solvers::BackwardDifferentiationMethod::new(order, solvers::SolverType::Implicit);
@@ -136,6 +181,13 @@ fn main() {
         let start_time: std::time::Instant = std::time::Instant::now();
         let (solution, res) = solver.solve(&problem, tau, false, Some(save_every));
         println!("{:?}", res);
-        write_csv("Implicit Backward Differentiation Method".to_string(), solution, tau, start_time.elapsed());
+        write_csv(
+            "Implicit Backward Differentiation Method".to_string(),
+            format!("{}", index),
+            solution,
+            tau,
+            start_time.elapsed(),
+        );
+        index += 1;
     }
 }
