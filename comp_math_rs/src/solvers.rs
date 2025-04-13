@@ -19,6 +19,15 @@ fn close_enough_arr<const N: usize>(a: &[f64; N], b: &[f64; N], epsilon: f64) ->
     close_enough(sum, 0f64, epsilon)
 }
 
+fn zero_enough_vec(a: &vec::Vec<f64>, epsilon: f64) -> bool {
+    let mut sum: f64 = 0f64;
+    for i in 0..a.len() {
+        sum += a[i].abs();
+    }
+
+    close_enough(sum, 0f64, epsilon)
+}
+
 pub fn derivative<F>(f: F, x: f64, h: f64) -> f64
 where
     F: Fn(f64) -> f64,
@@ -111,6 +120,103 @@ where
         let delta_x: [f64; N] = solve_linear_system(&jacobian, &f(&x));
 
         for i in 0..N {
+            x[i] += delta_x[i];
+        }
+
+        iterations += 1;
+    }
+
+    Ok(x)
+}
+
+pub fn partial_derivative_vec<F>(f: F, x: &std::vec::Vec<f64>, i: usize, j: usize, h: f64) -> f64
+where
+F: Fn(std::vec::Vec<f64>) -> std::vec::Vec<f64>,
+{
+    let mut x_1:Vec<f64> = x.clone();
+    let mut x_2:Vec<f64> = x.clone();
+
+    x_1[j] += h;
+    x_2[j] -= h;
+
+    (f(x_1)[i] - f(x_2)[i]) / (2f64 * h)
+}
+
+pub fn solve_linear_system_vec(a: &std::vec::Vec<std::vec::Vec<f64>>, b: &std::vec::Vec<f64>) -> std::vec::Vec<f64> {
+    let n = b.len();
+    
+    let mut l:Vec<Vec<f64>> = vec![vec![0f64; n]; n];
+    let mut u:Vec<Vec<f64>> = vec![vec![0f64; n]; n];
+
+    for i in 0..n {
+        l[i][i] = 1f64;
+        for j in i..n {
+            let mut sum: f64 = 0f64;
+            for k in 0..i {
+                sum += l[i][k] * u[k][j];
+            }
+            u[i][j] = a[i][j] - sum;
+        }
+
+        for j in i..n {
+            let mut sum: f64 = 0f64;
+            for k in 0..i {
+                sum += l[j][k] * u[k][i];
+            }
+            l[j][i] = (a[j][i] - sum) / u[i][i];
+        }
+    }
+
+    let mut v:Vec<f64> = vec![0f64; n];
+    for i in 0..n {
+        v[i] = b[i];
+        for j in 0..i {
+            v[i] -= l[i][j] * v[j];
+        }
+    }
+
+    let mut x:Vec<f64> = vec![0f64; n];
+
+    for i in (0..n).rev() {
+        x[i] = v[i] / u[i][i];
+        for j in i + 1..n {
+            x[i] -= u[i][j] * x[j] / u[i][i];
+        }
+    }
+
+    x
+}
+
+fn solve_newton_vec<F>(
+    f: F,
+    x: std::vec::Vec<f64>,
+    max_iterations: Option<u32>,
+) -> Result<std::vec::Vec<f64>, &'static str>
+where
+    F: Fn(std::vec::Vec<f64>) -> std::vec::Vec<f64>,
+{
+    let max_iterations: u32 = max_iterations.unwrap_or(100u32);
+    let n = x.len();
+
+    let mut x: Vec<f64> = x.clone();
+    let mut iterations: u32 = 0u32;
+
+    while !zero_enough_vec(&f(x), 1e-6) {
+        if iterations == max_iterations {
+            return Err("Cannot solve system, too many iterations");
+        }
+
+        let mut jacobian = vec![vec![0.0; n]; n];
+
+        for i in 0..n {
+            for j in 0..n {
+                jacobian[i][j] = -partial_derivative_vec(f, x, i, j, 1e-5);
+            }
+        }
+
+        let delta_x = solve_linear_system_vec(&jacobian, &f(x));
+
+        for i in 0..n {
             x[i] += delta_x[i];
         }
 
@@ -838,7 +944,230 @@ impl<const N: usize> DifferentialEquationNumericMethod<N> for BackwardDifferenti
     }
 
     fn get_name(&self) -> String {
-        return format!("{} Backward differentiation method of order: {}", self.solver_type, self.order,);
+        return format!(
+            "{} Backward differentiation method of order: {}",
+            self.solver_type, self.order,
+        );
+    }
+}
+
+enum NordsieckMethodType {
+    ImplicitAdams(u32),
+    ImplicitBackwardDifferentiation(u32),
+}
+
+impl NordsieckMethodType {
+    pub fn get_l(&self) -> Option<std::vec::Vec<f64>> {
+        match self {
+            Self::ImplicitAdams(n) => match n {
+                1 => Some(vec![1.0 / 2.0, 1.0]),
+                2 => Some(vec![5.0 / 12.0, 1.0, 1.0 / 2.0]),
+                3 => Some(vec![3.0 / 8.0, 1.0, 3.0 / 4.0, 1.0 / 6.0]),
+                4 => Some(vec![251.0 / 720.0, 1.0, 11.0 / 12.0, 1.0 / 3.0, 1.0 / 24.0]),
+                5 => Some(vec![
+                    95.0 / 288.0,
+                    1.0,
+                    25.0 / 24.0,
+                    35.0 / 72.0,
+                    5.0 / 48.0,
+                    1.0 / 120.0,
+                ]),
+                6 => Some(vec![
+                    19087.0 / 60480.0,
+                    1.0,
+                    137.0 / 120.0,
+                    5.0 / 8.0,
+                    17.0 / 96.0,
+                    1.0 / 40.0,
+                    1.0 / 720.0,
+                ]),
+                _ => None,
+            },
+            Self::ImplicitBackwardDifferentiation(n) => match n {
+                1 => Some(vec![1.0, 1.0]),
+                2 => Some(vec![2.0 / 3.0, 1.0, 1.0 / 3.0]),
+                3 => Some(vec![6.0 / 11.0, 1.0, 6.0 / 11.0, 1.0 / 11.0]),
+                4 => Some(vec![12.0 / 15.0, 1.0, 7.0 / 10.0, 1.0 / 5.0, 1.0 / 50.0]),
+                5 => Some(vec![
+                    60.0 / 137.0,
+                    1.0,
+                    225.0 / 274.0,
+                    85.0 / 274.0,
+                    15.0 / 274.0,
+                    1.0 / 274.0,
+                ]),
+                6 => Some(vec![
+                    20.0 / 49.0,
+                    1.0,
+                    58.0 / 63.0,
+                    5.0 / 12.0,
+                    25.0 / 252.0,
+                    1.0 / 84.0,
+                    1.0 / 1764.0,
+                ]),
+                _ => None,
+            },
+        }
+    }
+
+    pub fn get_name(&self) -> String {
+        match self {
+            Self::ImplicitAdams(n) => format!(
+                "Nordsieck representation of implicit Adams method of order {}",
+                n
+            ),
+            Self::ImplicitBackwardDifferentiation(n) => format!(
+                "Nordsieck representation of implicit backward differentiation method of order {}",
+                n
+            ),
+        }
+    }
+}
+
+struct NordsieckMethod<const N: usize> {
+    l: std::vec::Vec<f64>,
+    name: String,
+}
+
+impl<const N: usize> NordsieckMethod<N> {
+    pub fn new(method: NordsieckMethodType) -> Self {
+        Self {
+            l: method.get_l().expect("No such method is known"),
+            name: method.get_name(),
+        }
+    }
+
+    fn step(
+        &mut self,
+        problem: &CauchyProblem<N>,
+        tau: f64,
+        t: f64,
+        x: [f64; N],
+        z: vec::Vec<[f64; N]>,
+    ) -> Result<(f64, vec::Vec<[f64; N]>), &'static str> {
+
+        let equation = |z_next: vec::Vec<[f64; N]>| {
+            let mut x_i: [f64; N] = [0.0; N];
+            // let k = z_next.
+
+            let p: [[f64; N]; N];
+
+            for i in 0..N {
+                x_i[i] += 1.0 * (problem.f)(t[n - 0] + tau, x_next)[i];
+                x_i[i] /= 1.0;
+                x_i[i] *= tau;
+                x_i[i] += x[n][i];
+                x_i[i] -= x_next[i];
+            }
+
+            x_i
+        };
+        // let equation = |k_0: &[f64; NM]| {
+        //     let k_0: [[f64; N]; M] = unflatten::<N, M>(k_0);
+        //     let mut k_i: [[f64; N]; M] = [[0.0; N]; M];
+
+        //     for i in 0..M {
+        //         let arg_1: f64 = t + tau * self.c[i];
+        //         let mut arg_2: [f64; N] = [0f64; N];
+
+        //         for a in 0..N {
+        //             for j in 0..M {
+        //                 arg_2[a] += self.a[i][j] * k_0[j][a];
+        //             }
+        //             arg_2[a] *= tau;
+        //             arg_2[a] += x[a];
+        //         }
+        //         for a in 0..N {
+        //             k_i[i][a] = (problem.f)(arg_1, &arg_2)[a] - k_0[i][a];
+        //         }
+        //     }
+
+        //     let k_i: [f64; NM] = (*k_i.as_flattened()).try_into().unwrap();
+
+        //     k_i
+        // };
+
+        // let k = match solve_newton(equation, &[0f64; NM], None) {
+        //     Ok(x) => unflatten::<N, M>(&x),
+        //     Err(err) => {
+        //         println!("Failed to solve, {}", err);
+        //         return Err("Failed to solve");
+        //     }
+        // };
+
+        // let mut res: [f64; N] = [0f64; N];
+        // for j in 0..N {
+        //     for i in 0..M {
+        //         res[j] += self.b[i] * k[i][j];
+        //     }
+        //     res[j] *= tau;
+        //     res[j] += x[j];
+        // }
+
+        // Ok((t + tau, res))
+        todo!();
+    }
+}
+
+impl<const N: usize> DifferentialEquationNumericMethod<N> for NordsieckMethod<N> {
+    fn solve(
+        &mut self,
+        problem: &CauchyProblem<N>,
+        tau: f64,
+        print_progress: bool,
+        save_every: Option<u32>,
+    ) -> (CauchySolution<N>, Result<(), &'static str>) {
+        todo!();
+        // let mut t_i: Vec<f64> = vec![problem.start];
+        // let mut x_i: Vec<[f64; N]> = vec![problem.x_0.clone()];
+        // let mut iterations: u32 = 0u32;
+        // let save_every = save_every.unwrap_or(1);
+
+        // let mut solution: CauchySolution<N> = CauchySolution {
+        //     t: vec![],
+        //     x: vec![],
+        //     method_name: self.get_name(),
+        // };
+
+        // if print_progress {
+        //     println!("");
+        // }
+
+        // while *t_i.last().unwrap() < problem.stop {
+        //     let res: Result<(f64, [f64; N]), &str> = match self.solver_type {
+        //         SolverType::Explicit => self.step_explicit(&problem, tau, &t_i, &x_i, self.order),
+        //         SolverType::Implicit => self.step_implicit(&problem, tau, &t_i, &x_i, self.order),
+        //     };
+
+        //     match res {
+        //         Ok((t, x)) => {
+        //             t_i.push(t);
+        //             x_i.push(x);
+        //             if t_i.len() > self.order {
+        //                 t_i.remove(0);
+        //                 x_i.remove(0);
+        //             }
+        //             if iterations % save_every == 0 {
+        //                 solution.t.push(t);
+        //                 solution.x.push(x);
+        //                 if print_progress {
+        //                     print!("t: {}, iterations: {}\r", t, iterations)
+        //                 }
+        //             }
+        //         }
+        //         Err(a) => {
+        //             println!("Failed to solve, reason: {}", a);
+        //             return (solution, Err("Failed to solve"));
+        //         }
+        //     };
+        //     iterations += 1;
+        // }
+
+        // (solution, Ok(()))
+    }
+
+    fn get_name(&self) -> String {
+        self.name.clone()
     }
 }
 
