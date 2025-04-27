@@ -1,3 +1,4 @@
 venv
 __pycache__
 comp_math_rs/target
+comp_math_rs/test.csv

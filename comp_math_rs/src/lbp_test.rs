@@ -2,23 +2,21 @@
 
 use std::io::Write;
 
+use boundary_problem::LinearBoundaryProblem;
 use boundary_problem::BoundarySolution;
-use boundary_problem::NonlinearBoundaryProblem;
-use cauchy_problem::CauchySolver;
 
 mod adams_method;
 mod algebraic_equation_solvers;
 mod backward_differentiation_method;
 mod boundary_problem;
 mod cauchy_problem;
-mod newton_boundary_method;
 mod runge_kutta_method;
 mod shooting_method;
 mod tridiagonal_method;
 mod utils;
 
-fn write_csv(path: String, solution: BoundarySolution, step: f64, time: std::time::Duration) {
-    let mut file = std::fs::File::create(format!("../task7_1_data/{}.csv", path))
+fn write_csv(solution: BoundarySolution, step: f64, time: std::time::Duration) {
+    let mut file = std::fs::File::create(format!("test.csv"))
         .expect("Failed to open file");
     file.write(format!("{}\n", solution.method_name).as_bytes())
         .expect("failed to write to file");
@@ -37,26 +35,22 @@ fn write_csv(path: String, solution: BoundarySolution, step: f64, time: std::tim
 }
 
 fn main() {
-    let mut problem: NonlinearBoundaryProblem<_> = NonlinearBoundaryProblem {
-        f: |_: f64, x: &[f64; 2]| [-x[0].powi(2) / (2.0 - x[1]), x[0]],
+    let problem: LinearBoundaryProblem = LinearBoundaryProblem {
+        q: |_: f64| -1.0,
+        p: |_: f64| 0.0,
+        f: |_: f64| 0.0,
         x_0: 0.0,
-        x_n: 1.0,
+        x_n: 5.0,
         a_1: 0.0,
         b_1: 1.0,
-        u_1: 1.9,
+        u_1: 1.0,
         a_2: 0.0,
         b_2: 1.0,
-        u_2: 0.0,
+        u_2: 10.0,
     };
 
-    let solver: backward_differentiation_method::BackwardDifferentiationMethod<2> =
-        backward_differentiation_method::BackwardDifferentiationMethod::new(
-            1,
-            cauchy_problem::SolverType::Explicit,
-        );
-    let mut solver: Box<dyn CauchySolver<2, _>> = Box::new(solver);
     let start_time: std::time::Instant = std::time::Instant::now();
-    let (solution, _res) = crate::shooting_method::shooting_method(&mut problem, &mut solver, 0.001);
+    let solution: BoundarySolution = crate::tridiagonal_method::tridiagonal_method(&problem, 0.001);
     let duration: std::time::Duration = start_time.elapsed();
-    write_csv(format!("shooting_method"), solution, 0.001, duration);
+    write_csv(solution, 0.001, duration);
 }

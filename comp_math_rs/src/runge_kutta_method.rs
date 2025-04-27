@@ -1,5 +1,5 @@
-use crate::cauchy_problem::*;
 use crate::algebraic_equation_solvers;
+use crate::cauchy_problem::*;
 use crate::utils;
 
 pub struct RungeKuttaMethod<const N: usize, const M: usize, const MN: usize> {
@@ -32,13 +32,16 @@ impl<const N: usize, const M: usize, const NM: usize> RungeKuttaMethod<N, M, NM>
         }
     }
 
-    fn step_explicit(
+    fn step_explicit<F>(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         t: f64,
         x: [f64; N],
-    ) -> Result<(f64, [f64; N]), &'static str> {
+    ) -> Result<(f64, [f64; N]), &'static str>
+    where
+        F: FnMut(f64, &[f64; N]) -> [f64; N],
+    {
         let mut k: [[f64; N]; M] = [[0f64; N]; M];
         for i in 0..M {
             let arg_1: f64 = t + tau * self.c[i];
@@ -67,13 +70,16 @@ impl<const N: usize, const M: usize, const NM: usize> RungeKuttaMethod<N, M, NM>
         Ok((t + tau, res))
     }
 
-    fn step_implicit(
+    fn step_implicit<F>(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         t: f64,
         x: [f64; N],
-    ) -> Result<(f64, [f64; N]), &'static str> {
+    ) -> Result<(f64, [f64; N]), &'static str>
+    where
+        F: FnMut(f64, &[f64; N]) -> [f64; N],
+    {
         let equation = |k_0: &[f64; NM]| {
             let k_0: [[f64; N]; M] = utils::unflatten::<N, M>(k_0);
             let mut k_i: [[f64; N]; M] = [[0.0; N]; M];
@@ -119,13 +125,16 @@ impl<const N: usize, const M: usize, const NM: usize> RungeKuttaMethod<N, M, NM>
         Ok((t + tau, res))
     }
 
-    fn step(
+    fn step<F>(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         t: f64,
         x: [f64; N],
-    ) -> Result<(f64, [f64; N]), &'static str> {
+    ) -> Result<(f64, [f64; N]), &'static str>
+    where
+        F: FnMut(f64, &[f64; N]) -> [f64; N],
+    {
         match self.solver_type {
             SolverType::Explicit => self.step_explicit(problem, tau, t, x),
             SolverType::Implicit => self.step_implicit(problem, tau, t, x),
@@ -133,12 +142,14 @@ impl<const N: usize, const M: usize, const NM: usize> RungeKuttaMethod<N, M, NM>
     }
 }
 
-impl<const N: usize, const M: usize, const NM: usize> CauchySolver<N>
+impl<const N: usize, const M: usize, const NM: usize, F> CauchySolver<N, F>
     for RungeKuttaMethod<N, M, NM>
+where
+    F: FnMut(f64, &[f64; N]) -> [f64; N],
 {
     fn solve(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         print_progress: bool,
         save_every: Option<u32>,
@@ -151,7 +162,7 @@ impl<const N: usize, const M: usize, const NM: usize> CauchySolver<N>
         let mut solution: CauchySolution<N> = CauchySolution {
             t: vec![],
             x: vec![],
-            method_name: self.get_name(),
+            method_name: <RungeKuttaMethod<N, M, NM> as CauchySolver<N, F>>::get_name(self),
         };
 
         solution.t.push(problem.start);
@@ -162,7 +173,7 @@ impl<const N: usize, const M: usize, const NM: usize> CauchySolver<N>
         iterations += 1;
 
         while t_i < problem.stop {
-            match self.step(&problem, tau, t_i, x_i) {
+            match self.step(problem, tau, t_i, x_i) {
                 Ok((t, x)) => {
                     t_i = t;
                     x_i = x.clone();

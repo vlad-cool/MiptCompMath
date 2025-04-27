@@ -5,10 +5,10 @@ use std::io::Write;
 use cauchy_problem::*;
 
 mod adams_method;
+mod algebraic_equation_solvers;
 mod backward_differentiation_method;
 mod boundary_problem;
 mod cauchy_problem;
-mod algebraic_equation_solvers;
 mod runge_kutta_method;
 mod shooting_method;
 mod tridiagonal_method;
@@ -56,8 +56,8 @@ fn write_csv<const N: usize>(
 }
 
 fn main() {
-    let problem: CauchyProblem<3> = CauchyProblem {
-        f,
+    let mut problem: CauchyProblem<3, _> = CauchyProblem {
+        f: &mut f,
         start: 0.0,
         stop: 800.0,
         x_0: [0.5, 0.5, 0.5],
@@ -79,7 +79,7 @@ fn main() {
         let tau: f64 = 0.00001;
         let save_every: u32 = (0.01f64 / tau).round() as u32;
         let start_time: std::time::Instant = std::time::Instant::now();
-        let (solution, res) = solver.solve(&problem, tau, print_progress, Some(save_every));
+        let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));
         println!("{:?}", res);
         write_csv(
             "Runge-Kutta".to_string(),
@@ -102,7 +102,7 @@ fn main() {
     //     let tau: f64 = 0.01;
     //     let save_every: u32 = (0.01f64 / tau).round() as u32;
     //     let start_time: std::time::Instant = std::time::Instant::now();
-    //     let (solution, res) = solver.solve(&problem, tau, print_progress, Some(save_every));
+    //     let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));
     //     println!("{:?}", res);
     //     write_csv(
     //         "Runge-Kutta".to_string(),
@@ -132,7 +132,7 @@ fn main() {
         let tau: f64 = 0.01;
         let save_every: u32 = (0.01f64 / tau).round() as u32;
         let start_time: std::time::Instant = std::time::Instant::now();
-        let (solution, res) = solver.solve(&problem, tau, print_progress, Some(save_every));
+        let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));
         println!("{:?}", res);
         write_csv(
             "Runge-Kutta".to_string(),
@@ -150,7 +150,7 @@ fn main() {
             let tau: f64 = 0.000001;
             let save_every: u32 = (0.01f64 / tau).round() as u32;
             let start_time: std::time::Instant = std::time::Instant::now();
-            let (solution, res) = solver.solve(&problem, tau, print_progress, Some(save_every));
+            let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));
             println!("{:?}", res);
             write_csv(
                 "Explicit Adams".to_string(),
@@ -169,7 +169,7 @@ fn main() {
             let tau: f64 = 0.01;
             let save_every: u32 = (0.01f64 / tau).round() as u32;
             let start_time: std::time::Instant = std::time::Instant::now();
-            let (solution, res) = solver.solve(&problem, tau, print_progress, Some(save_every));
+            let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));
             println!("{:?}", res);
             write_csv(
                 "Implicit Adams".to_string(),
@@ -189,7 +189,7 @@ fn main() {
             let tau: f64 = 0.000001;
             let save_every: u32 = (0.01f64 / tau).round() as u32;
             let start_time: std::time::Instant = std::time::Instant::now();
-            let (solution, res) = solver.solve(&problem, tau, print_progress, Some(save_every));
+            let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));
             println!("{:?}", res);
             write_csv(
                 "Explicit Backward Differentiation Method".to_string(),
@@ -209,7 +209,7 @@ fn main() {
             let tau: f64 = 0.01;
             let save_every: u32 = (0.01f64 / tau).round() as u32;
             let start_time: std::time::Instant = std::time::Instant::now();
-            let (solution, res) = solver.solve(&problem, tau, print_progress, Some(save_every));
+            let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));
             println!("{:?}", res);
             write_csv(
                 "Implicit Backward Differentiation Method".to_string(),
@@ -227,7 +227,7 @@ fn main() {
     // let tau: f64 = 0.0001;
     // let save_every: u32 = (0.01f64 / tau).round() as u32;
     // let start_time: std::time::Instant = std::time::Instant::now();
-    // let (solution, res) = solver.solve(&problem, tau, print_progress, Some(save_every));
+    // let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));
     // println!("{:?}", res);
     // write_csv(
     //     "Nordsieck Method".to_string(),

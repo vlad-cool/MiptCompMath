@@ -1,5 +1,5 @@
-use crate::cauchy_problem::*;
 use crate::algebraic_equation_solvers;
+use crate::cauchy_problem::*;
 
 pub struct BackwardDifferentiationMethod<const N: usize> {
     order: usize,
@@ -10,15 +10,20 @@ impl<const N: usize> BackwardDifferentiationMethod<N> {
     pub fn new(order: usize, solver_type: SolverType) -> Self {
         Self { order, solver_type }
     }
+}
 
-    fn step_explicit(
+impl<const N: usize> BackwardDifferentiationMethod<N> {
+    fn step_explicit<F>(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         t: &std::vec::Vec<f64>,
         x: &std::vec::Vec<[f64; N]>,
         order: usize,
-    ) -> Result<(f64, [f64; N]), &'static str> {
+    ) -> Result<(f64, [f64; N]), &'static str>
+    where
+        F: FnMut(f64, &[f64; N]) -> [f64; N],
+    {
         if t.len() < order {
             self.step_explicit(problem, tau, t, x, t.len())
         } else {
@@ -61,14 +66,17 @@ impl<const N: usize> BackwardDifferentiationMethod<N> {
         }
     }
 
-    fn step_implicit(
+    fn step_implicit<F>(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         t: &std::vec::Vec<f64>,
         x: &std::vec::Vec<[f64; N]>,
         order: usize,
-    ) -> Result<(f64, [f64; N]), &'static str> {
+    ) -> Result<(f64, [f64; N]), &'static str>
+    where
+        F: FnMut(f64, &[f64; N]) -> [f64; N],
+    {
         if t.len() < order {
             self.step_implicit(problem, tau, t, x, t.len())
         } else {
@@ -174,10 +182,13 @@ impl<const N: usize> BackwardDifferentiationMethod<N> {
     }
 }
 
-impl<const N: usize> CauchySolver<N> for BackwardDifferentiationMethod<N> {
+impl<const N: usize, F> CauchySolver<N, F> for BackwardDifferentiationMethod<N>
+where
+    F: FnMut(f64, &[f64; N]) -> [f64; N],
+{
     fn solve(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         print_progress: bool,
         save_every: Option<u32>,
@@ -190,7 +201,7 @@ impl<const N: usize> CauchySolver<N> for BackwardDifferentiationMethod<N> {
         let mut solution: CauchySolution<N> = CauchySolution {
             t: vec![],
             x: vec![],
-            method_name: self.get_name(),
+            method_name: <BackwardDifferentiationMethod<N> as CauchySolver<N, F>>::get_name(self),
         };
 
         solution.t.push(problem.start);
@@ -202,8 +213,8 @@ impl<const N: usize> CauchySolver<N> for BackwardDifferentiationMethod<N> {
 
         while *t_i.last().unwrap() < problem.stop {
             let res: Result<(f64, [f64; N]), &str> = match self.solver_type {
-                SolverType::Explicit => self.step_explicit(&problem, tau, &t_i, &x_i, self.order),
-                SolverType::Implicit => self.step_implicit(&problem, tau, &t_i, &x_i, self.order),
+                SolverType::Explicit => self.step_explicit(problem, tau, &t_i, &x_i, self.order),
+                SolverType::Implicit => self.step_implicit(problem, tau, &t_i, &x_i, self.order),
             };
 
             match res {

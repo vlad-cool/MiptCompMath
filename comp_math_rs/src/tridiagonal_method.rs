@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::boundary_problem::LinearBoundaryProblem;
-use crate::boundary_problem::LinearBoundarySolution;
+use crate::boundary_problem::BoundarySolution;
 
 fn solve_tridiagonal_linear_system(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Vec<f64> {
     let n: usize = b.len();
@@ -36,7 +36,7 @@ fn solve_tridiagonal_linear_system(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Vec
     b
 }
 
-pub fn tridiagonal_method(problem: &LinearBoundaryProblem, step: f64) -> LinearBoundarySolution {
+pub fn tridiagonal_method(problem: &LinearBoundaryProblem, step: f64) -> BoundarySolution {
     let n: usize = ((problem.x_n - problem.x_0) / step).ceil() as usize + 1;
     let step: f64 = (problem.x_n - problem.x_0) / n as f64;
     let mut res_x: Vec<f64> = vec![0.0; n];
@@ -64,7 +64,7 @@ pub fn tridiagonal_method(problem: &LinearBoundaryProblem, step: f64) -> LinearB
 
     let res_y: Vec<f64> = solve_tridiagonal_linear_system(a, d);
 
-    LinearBoundarySolution {
+    BoundarySolution {
         x: res_x,
         y: res_y,
         method_name: "Tridiagonal method".to_string(),

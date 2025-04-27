@@ -11,14 +11,16 @@ impl<const N: usize> AdamsMethod<N> {
         Self { order, solver_type }
     }
 
-    fn step_explicit(
+    fn step_explicit<F>(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         t: &std::vec::Vec<f64>,
         x: &std::vec::Vec<[f64; N]>,
         order: usize,
-    ) -> Result<(f64, [f64; N]), &'static str> {
+    ) -> Result<(f64, [f64; N]), &'static str>
+    where
+        F: FnMut(f64, &[f64; N]) -> [f64; N], {
         if t.len() < order {
             self.step_explicit(problem, tau, t, x, t.len())
         } else {
@@ -75,14 +77,16 @@ impl<const N: usize> AdamsMethod<N> {
         }
     }
 
-    fn step_implicit(
+    fn step_implicit<F>(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         t: &std::vec::Vec<f64>,
         x: &std::vec::Vec<[f64; N]>,
         order: usize,
-    ) -> Result<(f64, [f64; N]), &'static str> {
+    ) -> Result<(f64, [f64; N]), &'static str>
+    where
+        F: FnMut(f64, &[f64; N]) -> [f64; N], {
         if t.len() < order {
             self.step_implicit(problem, tau, t, x, t.len())
         } else {
@@ -192,14 +196,17 @@ impl<const N: usize> AdamsMethod<N> {
     }
 }
 
-impl<const N: usize> CauchySolver<N> for AdamsMethod<N> {
+impl<const N: usize, F> CauchySolver<N, F> for AdamsMethod<N> 
+where
+    F: FnMut(f64, &[f64; N]) -> [f64; N],{
     fn solve(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         print_progress: bool,
         save_every: Option<u32>,
-    ) -> (CauchySolution<N>, Result<(), &'static str>) {
+    ) -> (CauchySolution<N>, Result<(), &'static str>)
+    {
         let mut t_i: Vec<f64> = vec![problem.start];
         let mut x_i: Vec<[f64; N]> = vec![problem.x_0.clone()];
         let mut iterations: u32 = 0u32;
@@ -208,7 +215,7 @@ impl<const N: usize> CauchySolver<N> for AdamsMethod<N> {
         let mut solution: CauchySolution<N> = CauchySolution {
             t: vec![],
             x: vec![],
-            method_name: self.get_name(),
+            method_name: <AdamsMethod<N> as CauchySolver<N, F>>::get_name(self),
         };
 
         solution.t.push(problem.start);
@@ -220,8 +227,8 @@ impl<const N: usize> CauchySolver<N> for AdamsMethod<N> {
 
         while *t_i.last().unwrap() < problem.stop {
             let res: Result<(f64, [f64; N]), &str> = match self.solver_type {
-                SolverType::Explicit => self.step_explicit(&problem, tau, &t_i, &x_i, self.order),
-                SolverType::Implicit => self.step_implicit(&problem, tau, &t_i, &x_i, self.order),
+                SolverType::Explicit => self.step_explicit(problem, tau, &t_i, &x_i, self.order),
+                SolverType::Implicit => self.step_implicit(problem, tau, &t_i, &x_i, self.order),
             };
 
             match res {

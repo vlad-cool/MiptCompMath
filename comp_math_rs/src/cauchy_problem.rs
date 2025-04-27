@@ -1,5 +1,8 @@
-pub struct CauchyProblem<const N: usize> {
-    pub f: fn(t: f64, &[f64; N]) -> [f64; N],
+pub struct CauchyProblem<'a, const N: usize, F>
+where
+    F: FnMut(f64, &[f64; N]) -> [f64; N],
+{
+    pub f: &'a mut F,
     pub start: f64,
     pub stop: f64,
     pub x_0: [f64; N],
@@ -11,10 +14,13 @@ pub struct CauchySolution<const N: usize> {
     pub method_name: String,
 }
 
-pub trait CauchySolver<const N: usize> {
+pub trait CauchySolver<const N: usize, F>
+where
+    F: FnMut(f64, &[f64; N]) -> [f64; N],
+{
     fn solve(
         &mut self,
-        problem: &CauchyProblem<N>,
+        problem: &mut CauchyProblem<N, F>,
         tau: f64,
         print_progress: bool,
         save_every: Option<u32>,
