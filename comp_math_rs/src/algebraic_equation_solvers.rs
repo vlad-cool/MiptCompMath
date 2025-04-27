@@ -85,7 +85,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::equation_solvers::*;
+    use crate::algebraic_equation_solvers::*;
     use crate::utils::*;
 
     #[test]

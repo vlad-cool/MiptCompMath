@@ -6,9 +6,12 @@ use cauchy_problem::*;
 
 mod adams_method;
 mod backward_differentiation_method;
+mod boundary_problem;
 mod cauchy_problem;
-mod equation_solvers;
+mod algebraic_equation_solvers;
 mod runge_kutta_method;
+mod shooting_method;
+mod tridiagonal_method;
 mod utils;
 
 use crate::adams_method::AdamsMethod;

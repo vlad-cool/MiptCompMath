@@ -1,5 +1,5 @@
 use crate::cauchy_problem::*;
-use crate::equation_solvers;
+use crate::algebraic_equation_solvers;
 
 pub struct BackwardDifferentiationMethod<const N: usize> {
     order: usize,
@@ -88,7 +88,7 @@ impl<const N: usize> BackwardDifferentiationMethod<N> {
                         x_i
                     };
 
-                    match equation_solvers::solve_newton(equation, &[0.0; N], None) {
+                    match algebraic_equation_solvers::solve_newton(equation, &[0.0; N], None) {
                         Ok(x) => Ok((t[n] + tau, x)),
                         Err(err) => {
                             println!("Failed to solve, {}", err);
@@ -111,7 +111,7 @@ impl<const N: usize> BackwardDifferentiationMethod<N> {
                         x_i
                     };
 
-                    match equation_solvers::solve_newton(equation, &x[n - 1], None) {
+                    match algebraic_equation_solvers::solve_newton(equation, &x[n - 1], None) {
                         Ok(x) => Ok((t[n] + tau, x)),
                         Err(err) => {
                             println!("Failed to solve, {}", err);
@@ -135,7 +135,7 @@ impl<const N: usize> BackwardDifferentiationMethod<N> {
                         x_i
                     };
 
-                    match equation_solvers::solve_newton(equation, &x[n - 1], None) {
+                    match algebraic_equation_solvers::solve_newton(equation, &x[n - 1], None) {
                         Ok(x) => Ok((t[n] + tau, x)),
                         Err(err) => {
                             println!("Failed to solve, {}", err);
@@ -160,7 +160,7 @@ impl<const N: usize> BackwardDifferentiationMethod<N> {
                         x_i
                     };
 
-                    match equation_solvers::solve_newton(equation, &x[n - 1], None) {
+                    match algebraic_equation_solvers::solve_newton(equation, &x[n - 1], None) {
                         Ok(x) => Ok((t[n] + tau, x)),
                         Err(err) => {
                             println!("Failed to solve, {}", err);

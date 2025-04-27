@@ -1,14 +1,14 @@
-use crate::boundary_problem::BoundaryProblem;
-use crate::boundary_problem::BoundarySolution;
+use crate::boundary_problem::NonlinearBoundaryProblem;
+use crate::boundary_problem::NonlinearBoundarySolution;
 use crate::cauchy_problem::CauchyProblem;
 use crate::cauchy_problem::CauchySolver;
-use crate::equation_solvers::solve_newton;
+use crate::algebraic_equation_solvers::solve_newton;
 
 pub fn shooting_method(
-    problem: &BoundaryProblem,
+    problem: &NonlinearBoundaryProblem,
     cauchy_solver: &mut Box<dyn CauchySolver<2>>,
     step: f64,
-) -> (BoundarySolution, Result<(), &'static str>) {
+) -> (NonlinearBoundarySolution, Result<(), &'static str>) {
     let equation = |v: &[f64; 1]| {
         let v: f64 = v[0];
         let cauchy_problem: CauchyProblem<2> = CauchyProblem {
@@ -34,7 +34,7 @@ pub fn shooting_method(
 
     let (cauchy_solution, _res) = cauchy_solver.solve(&problem, step, false, None);
 
-    let mut solution: BoundarySolution = BoundarySolution {
+    let mut solution: NonlinearBoundarySolution = NonlinearBoundarySolution {
         x: std::vec::Vec::with_capacity(cauchy_solution.t.len()),
         y: std::vec::Vec::with_capacity(cauchy_solution.x.len()),
         method_name: "Shooting method".to_string(),

@@ -2,19 +2,21 @@
 
 use std::io::Write;
 
-use boundary_problem::{BoundaryProblem, BoundarySolution};
+use boundary_problem::NonlinearBoundaryProblem;
+use boundary_problem::NonlinearBoundarySolution;
 use cauchy_problem::CauchySolver;
 
 mod adams_method;
 mod backward_differentiation_method;
 mod boundary_problem;
 mod cauchy_problem;
-mod equation_solvers;
+mod algebraic_equation_solvers;
 mod runge_kutta_method;
 mod shooting_method;
+mod tridiagonal_method;
 mod utils;
 
-fn write_csv(path: String, solution: BoundarySolution, step: f64, time: std::time::Duration) {
+fn write_csv(path: String, solution: NonlinearBoundarySolution, step: f64, time: std::time::Duration) {
     let mut file = std::fs::File::create(format!("../task7_1_data/{}.csv", path))
         .expect("Failed to open file");
     file.write(format!("{}\n", solution.method_name).as_bytes())
@@ -34,7 +36,7 @@ fn write_csv(path: String, solution: BoundarySolution, step: f64, time: std::tim
 }
 
 fn main() {
-    let problem: BoundaryProblem = BoundaryProblem {
+    let problem: NonlinearBoundaryProblem = NonlinearBoundaryProblem {
         f: |_: f64, x: &[f64; 2]| [-x[0].powi(2) / (2.0 - x[1]), x[0]],
         x_0: 0.0,
         y_0: 1.9,

@@ -1,5 +1,5 @@
 use crate::cauchy_problem::*;
-use crate::equation_solvers;
+use crate::algebraic_equation_solvers;
 use crate::utils;
 
 pub struct RungeKuttaMethod<const N: usize, const M: usize, const MN: usize> {
@@ -99,7 +99,7 @@ impl<const N: usize, const M: usize, const NM: usize> RungeKuttaMethod<N, M, NM>
             k_i
         };
 
-        let k = match equation_solvers::solve_newton(equation, &[0f64; NM], None) {
+        let k = match algebraic_equation_solvers::solve_newton(equation, &[0f64; NM], None) {
             Ok(x) => utils::unflatten::<N, M>(&x),
             Err(err) => {
                 println!("Failed to solve, {}", err);
