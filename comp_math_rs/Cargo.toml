@@ -11,4 +11,8 @@ path = "src/task6_2.rs"
 name = "task7_1"
 path = "src/task7_1.rs"
 
+[[bin]]
+name = "nordsieck_test"
+path = "src/nordsieck_test.rs"
+
 [dependencies]
