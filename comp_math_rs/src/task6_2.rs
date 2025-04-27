@@ -1,8 +1,19 @@
+#![allow(dead_code)]
+
 use std::io::Write;
 
-use solvers::*;
+use cauchy_problem::*;
 
-mod solvers;
+mod adams_method;
+mod backward_differentiation_method;
+mod cauchy_problem;
+mod equation_solvers;
+mod runge_kutta_method;
+mod utils;
+
+use crate::adams_method::AdamsMethod;
+use crate::backward_differentiation_method::BackwardDifferentiationMethod;
+use crate::runge_kutta_method::RungeKuttaMethod;
 
 fn f(_t: f64, x: &[f64; 3]) -> [f64; 3] {
     [
@@ -55,7 +66,7 @@ fn main() {
     let count_all: bool = std::env::args().any(|arg| arg == "--compute-all");
 
     if count_all {
-        let mut solver: solvers::RungeKuttaMethod<3, 3, 9> = solvers::RungeKuttaMethod::new(
+        let mut solver: RungeKuttaMethod<3, 3, 9> = RungeKuttaMethod::new(
             4,
             [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [-1.0, 2.0, 0.0]],
             [1f64 / 6f64, 2f64 / 3f64, 1f64 / 6f64],
@@ -78,7 +89,7 @@ fn main() {
     }
 
     // if count_all {
-    //     let mut solver: solvers::RungeKuttaMethod<3, 2, 6> = solvers::RungeKuttaMethod::new(
+    //     let mut solver: RungeKuttaMethod<3, 2, 6> = RungeKuttaMethod::new(
     //         2,
     //         [[0.0, 0.0], [0.5, 0.5]],
     //         [0.0f64, 1.0f64],
@@ -101,18 +112,20 @@ fn main() {
     // }
 
     if count_all {
-        let mut solver: solvers::RungeKuttaMethod<3, 4, 12> = solvers::RungeKuttaMethod::new(
-            3,
-            [
-                [0.5, 0.0, 0.0, 0.0],
-                [1.0 / 6.0, 0.5, 0.0, 0.0],
-                [-0.5, 0.5, 0.5, 0.0],
+        let mut solver: runge_kutta_method::RungeKuttaMethod<3, 4, 12> =
+            runge_kutta_method::RungeKuttaMethod::new(
+                3,
+                [
+                    [0.5, 0.0, 0.0, 0.0],
+                    [1.0 / 6.0, 0.5, 0.0, 0.0],
+                    [-0.5, 0.5, 0.5, 0.0],
+                    [1.5, -1.5, 0.5, 0.5],
+                ],
                 [1.5, -1.5, 0.5, 0.5],
-            ],
-            [1.5, -1.5, 0.5, 0.5],
-            [0.5, 2.0 / 3.0, 0.5, 1.0],
-            "Four-stage, 3rd order, L-stable, Diagonally Implicit Runge-Kutta method".to_string(),
-        );
+                [0.5, 2.0 / 3.0, 0.5, 1.0],
+                "Four-stage, 3rd order, L-stable, Diagonally Implicit Runge-Kutta method"
+                    .to_string(),
+            );
         let tau: f64 = 0.01;
         let save_every: u32 = (0.01f64 / tau).round() as u32;
         let start_time: std::time::Instant = std::time::Instant::now();
@@ -130,8 +143,7 @@ fn main() {
 
     if count_all {
         for order in 1..5 {
-            let mut solver: solvers::AdamsMethod<3> =
-                solvers::AdamsMethod::new(order, solvers::SolverType::Explicit);
+            let mut solver: AdamsMethod<3> = AdamsMethod::new(order, SolverType::Explicit);
             let tau: f64 = 0.000001;
             let save_every: u32 = (0.01f64 / tau).round() as u32;
             let start_time: std::time::Instant = std::time::Instant::now();
@@ -150,8 +162,7 @@ fn main() {
 
     if count_all {
         for order in 1..5 {
-            let mut solver: solvers::AdamsMethod<3> =
-                solvers::AdamsMethod::new(order, solvers::SolverType::Implicit);
+            let mut solver: AdamsMethod<3> = AdamsMethod::new(order, SolverType::Implicit);
             let tau: f64 = 0.01;
             let save_every: u32 = (0.01f64 / tau).round() as u32;
             let start_time: std::time::Instant = std::time::Instant::now();
@@ -170,8 +181,8 @@ fn main() {
 
     if count_all {
         for order in 1..3 {
-            let mut solver: solvers::BackwardDifferentiationMethod<3> =
-                solvers::BackwardDifferentiationMethod::new(order, solvers::SolverType::Explicit);
+            let mut solver: BackwardDifferentiationMethod<3> =
+                BackwardDifferentiationMethod::new(order, SolverType::Explicit);
             let tau: f64 = 0.000001;
             let save_every: u32 = (0.01f64 / tau).round() as u32;
             let start_time: std::time::Instant = std::time::Instant::now();
@@ -190,8 +201,8 @@ fn main() {
 
     if count_all {
         for order in 1..4 {
-            let mut solver: solvers::BackwardDifferentiationMethod<3> =
-                solvers::BackwardDifferentiationMethod::new(order, solvers::SolverType::Implicit);
+            let mut solver: BackwardDifferentiationMethod<3> =
+                BackwardDifferentiationMethod::new(order, SolverType::Implicit);
             let tau: f64 = 0.01;
             let save_every: u32 = (0.01f64 / tau).round() as u32;
             let start_time: std::time::Instant = std::time::Instant::now();
@@ -209,8 +220,8 @@ fn main() {
     }
 
     // let mut solver: NordsieckMethod<3> =
-    //     solvers::NordsieckMethod::new(solvers::NordsieckMethodType::ImplicitAdams(3));
-    // let tau: f64 = 0.01;
+    //     NordsieckMethod::new(NordsieckMethodType::ImplicitAdams(2));
+    // let tau: f64 = 0.0001;
     // let save_every: u32 = (0.01f64 / tau).round() as u32;
     // let start_time: std::time::Instant = std::time::Instant::now();
     // let (solution, res) = solver.solve(&problem, tau, print_progress, Some(save_every));

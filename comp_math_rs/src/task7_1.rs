@@ -1,69 +1,55 @@
+#![allow(dead_code)]
+
 use std::io::Write;
 
-use solvers::*;
+use boundary_problem::{BoundaryProblem, BoundarySolution};
+use cauchy_problem::CauchySolver;
 
-mod solvers;
+mod adams_method;
+mod backward_differentiation_method;
+mod boundary_problem;
+mod cauchy_problem;
+mod equation_solvers;
+mod runge_kutta_method;
+mod shooting_method;
+mod utils;
 
-fn write_csv<const N: usize>(
-    path: String,
-    solution: CauchySolution<N>,
-    tau: f64,
-    time: std::time::Duration,
-) {
+fn write_csv(path: String, solution: BoundarySolution, step: f64, time: std::time::Duration) {
     let mut file = std::fs::File::create(format!("../task7_1_data/{}.csv", path))
         .expect("Failed to open file");
     file.write(format!("{}\n", solution.method_name).as_bytes())
         .expect("failed to write to file");
-    file.write(format!("{}\n", tau).as_bytes())
+    file.write(format!("{}\n", step).as_bytes())
         .expect("failed to write to file");
     file.write(format!("{}\n", time.as_secs_f64()).as_bytes())
         .expect("failed to write to file");
-    for i in 0..solution.t.len() {
-        file.write(format!("{}", solution.t[i]).as_bytes())
+    for i in 0..solution.x.len() {
+        file.write(format!("{}", solution.x[i]).as_bytes())
             .expect("failed to write to file");
-        for j in 0..N {
-            file.write(format!(", {}", solution.x[i][j]).as_bytes())
-                .expect("failed to write to file");
-        }
+        file.write(format!(", {}", solution.y[i]).as_bytes())
+            .expect("failed to write to file");
         file.write("\n".as_bytes())
             .expect("failed to write to file");
     }
 }
 
 fn main() {
-    let tau = 0.001;
-    let equation = |v: &[f64; 1]| {
-        let v: f64 = v[0];
-        let problem: CauchyProblem<2> = CauchyProblem {
-            f: |_: f64, x: &[f64; 2]| [-x[0].powi(2) / (2.0 - x[1]), x[0]],
-            start: 0.0,
-            stop: 1.0,
-            x_0: [1.9, v],
-        };
-        let mut solver: solvers::BackwardDifferentiationMethod<2> =
-            solvers::BackwardDifferentiationMethod::new(1, solvers::SolverType::Explicit);
-        let (solution, res) = solver.solve(&problem, tau, false, None);
-        res.expect("Faield to solve differential equation");
-        println!("{}", solution.x.last().unwrap()[0]);
-        [solution.x.last().unwrap()[0]]
-    };
-
-    let start_time: std::time::Instant = std::time::Instant::now();
-    let res: Result<[f64; 1], &str> = solve_newton(equation, &[1.0], None);
-    let duration: std::time::Duration = start_time.elapsed();
-    let v: f64 = res.unwrap()[0];
-    println!("v: {}", v);
-
-    let problem: CauchyProblem<2> = CauchyProblem {
+    let problem: BoundaryProblem = BoundaryProblem {
         f: |_: f64, x: &[f64; 2]| [-x[0].powi(2) / (2.0 - x[1]), x[0]],
-        start: 0.0,
-        stop: 1.0,
-        x_0: [1.9, v],
+        x_0: 0.0,
+        y_0: 1.9,
+        x_n: 1.0,
+        y_n: 0.0,
     };
-    let mut solver: solvers::BackwardDifferentiationMethod<2> =
-        solvers::BackwardDifferentiationMethod::new(1, solvers::SolverType::Explicit);
-    let (solution, res) = solver.solve(&problem, 0.001, false, None);
-    res.expect("Faield to solve differential equation");
 
-    write_csv(format!("shooting_method"), solution, tau, duration);
+    let solver: backward_differentiation_method::BackwardDifferentiationMethod<2> =
+        backward_differentiation_method::BackwardDifferentiationMethod::new(
+            1,
+            cauchy_problem::SolverType::Explicit,
+        );
+    let mut solver: Box<dyn CauchySolver<2>> = Box::new(solver);
+    let start_time: std::time::Instant = std::time::Instant::now();
+    let (solution, _res) = crate::shooting_method::shooting_method(&problem, &mut solver, 0.001);
+    let duration: std::time::Duration = start_time.elapsed();
+    write_csv(format!("shooting_method"), solution, 0.001, duration);
 }
