@@ -1,10 +1,7 @@
 use std::vec;
 
-use crate::algebraic_equation_solvers::solve_newton;
 use crate::boundary_problem::LinearBoundaryProblem;
 use crate::boundary_problem::LinearBoundarySolution;
-use crate::cauchy_problem::CauchyProblem;
-use crate::cauchy_problem::CauchySolver;
 
 fn solve_tridiagonal_linear_system(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Vec<f64> {
     let n: usize = b.len();
@@ -23,8 +20,6 @@ fn solve_tridiagonal_linear_system(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Vec
         b[i] += b[i - 1] * c;
     }
 
-    println!("{:?}\n\n---\n", a);
-
     for i in (0..n - 1).rev() {
         let c: f64 = -a[i][i + 1] / a[i + 1][i + 1];
         let start: usize = if i == 0 { 0 } else { i - 1 };
@@ -33,8 +28,6 @@ fn solve_tridiagonal_linear_system(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Vec
         }
         b[i] += b[i + 1] * c;
     }
-
-    println!("{:?}", a);
 
     for i in 0..n {
         b[i] /= a[i][i];
@@ -45,17 +38,19 @@ fn solve_tridiagonal_linear_system(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Vec
 
 pub fn tridiagonal_method(problem: &LinearBoundaryProblem, step: f64) -> LinearBoundarySolution {
     let n: usize = ((problem.x_n - problem.x_0) / step).ceil() as usize + 1;
-    let step: f64 = (problem.x_n - problem.x_0) / step as f64;
-    let mut res_x = vec![0.0; n];
+    let step: f64 = (problem.x_n - problem.x_0) / n as f64;
+    let mut res_x: Vec<f64> = vec![0.0; n];
 
     let mut a: Vec<Vec<f64>> = vec![vec![0.0; n]; n];
     let mut d: Vec<f64> = vec![0.0; n];
+    for i in 0..n {
+        res_x[i] = problem.x_0 + step * i as f64;
+    }
     for i in 1..n - 1 {
         let x: f64 = problem.x_0 + step * i as f64;
-        res_x[i] = x;
         a[i][i - 1] = 1.0 - (problem.q)(x) * step / 2.0;
         a[i][i + 1] = 1.0 + (problem.q)(x) * step / 2.0;
-        a[i][i] = step.powi(2) * (problem.p)(x) - a[i][i - 1] + a[i][i + 1];
+        a[i][i] = step.powi(2) * (problem.p)(x) - a[i][i - 1] - a[i][i + 1];
         d[i] = (problem.f)(x) * step.powi(2);
     }
     a[0][0] = problem.b_1 - problem.a_1 / step;
@@ -63,7 +58,7 @@ pub fn tridiagonal_method(problem: &LinearBoundaryProblem, step: f64) -> LinearB
     a[n - 1][n - 2] = -problem.a_2 / step;
     a[n - 1][n - 1] = -problem.a_2 / step - problem.b_2;
     d[0] = problem.u_1;
-    d[n - 1] = problem.u_2;
+    d[n - 1] = -problem.u_2;
     let a: Vec<Vec<f64>> = a;
     let d: Vec<f64> = d;
 
@@ -92,9 +87,7 @@ mod tests {
         ];
         let b: Vec<f64> = vec![5.0, 3.0, 4.0, 1.0];
 
-        let mut x: Vec<f64> = solve_tridiagonal_linear_system(a.clone(), b.clone());
-
-        println!("{:?}", x);
+        let x: Vec<f64> = solve_tridiagonal_linear_system(a.clone(), b.clone());
 
         for i in 0..4 {
             let mut sum: f64 = 0.0;
