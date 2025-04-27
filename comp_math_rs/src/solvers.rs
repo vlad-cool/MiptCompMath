@@ -92,11 +92,15 @@ where
 
         for i in 0..n {
             for j in 0..n {
+                // jacobian[j][i] = -partial_derivative_vec(f, &x, i, j, 1e-5);
                 jacobian[i][j] = -partial_derivative_vec(f, &x, i, j, 1e-5);
             }
         }
 
         let delta_x: Vec<f64> = solve_linear_system_vec(&jacobian, &f(&x));
+        println!("jac: {:?}", jacobian);
+        println!("f: {:?}", f(&x));
+        println!("{:?}", delta_x);
 
         println!("{:?}", jacobian);
         println!("{:?}", f(&x));
@@ -507,23 +511,27 @@ impl<const N: usize> NordsieckMethod<N> {
         problem: &CauchyProblem<N>,
         tau: f64,
         t: f64,
-        z: &vec::Vec<[f64; N]>,
-    ) -> Result<(f64, vec::Vec<[f64; N]>), &'static str> {
+        z: &vec::Vec<f64>,
+    ) -> Result<(f64, vec::Vec<f64>), &'static str> {
         let equation = |z_next: &vec::Vec<f64>| {
             let k: usize = self.l.len();
             let mut x_next: [f64; N] = [0.0; N];
 
             for i in 0..N {
-                x_next[i] = z_next[i * k];
+                x_next[i] = z_next[i * N];
             }
 
             let mut p: Vec<Vec<f64>> = vec![vec![0.0; k]; k];
 
             for j in 0..k {
                 for i in 0..(j + 1) {
-                    p[i][j] = c_n_k(i, j) as f64;
+                    p[i][j] = c_n_k(j, i) as f64;
                 }
             }
+
+            // println!("p: {:?}", p);
+            // println!("p: {p:?}");
+            // let p: Vec<Vec<f64>> = matrix_transpose(&p);
 
             let mut identity: Vec<Vec<f64>> = vec![vec![0.0; N]; N];
 
@@ -534,9 +542,9 @@ impl<const N: usize> NordsieckMethod<N> {
             let mut e: Vec<Vec<f64>> = vec![vec![0.0; k]];
 
             // e[0][1] = 1.0;
-            e[0][0] = 1.0;
+            e[0][1] = 1.0;
 
-            let z_col: Vec<Vec<f64>> = matrix_transpose(&vec![z_next.clone()]);
+            let z_col: Vec<Vec<f64>> = matrix_transpose(&vec![z.clone()]);
 
             // println!("P: {:?}", p);
             // println!("R: {:?}", identity);
@@ -550,16 +558,17 @@ impl<const N: usize> NordsieckMethod<N> {
             // println!("E tim_cirx: {}x{}", tensor_product(&matrix_product(&e, &p), &identity).len(), tensor_product(&matrix_product(&e, &p), &identity)[0].len());
             // println!("e_1: {}x{}", e.len(), e[0].len());
 
-            std::io::stdout().flush().unwrap();
+            // std::io::stdout().flush().unwrap();
 
-            let a: Vec<Vec<f64>> = matrix_product(&tensor_product(&p, &identity), &z_col);
-            let b: Vec<Vec<f64>> = tensor_product(&vec![self.l.clone()], &identity);
-            let c: Vec<Vec<f64>> = matrix_transpose(&matrix_scale(
-                &vec![(problem.f)(t + tau, &x_next).to_vec()],
-                tau,
-            ));
-            let d: Vec<Vec<f64>> =
-                matrix_product(&tensor_product(&matrix_product(&e, &p), &identity), &z_col);
+            // let a: Vec<Vec<f64>> = matrix_product(&tensor_product(&p, &identity), &z_col);
+            // let b: Vec<Vec<f64>> =
+            //     tensor_product(&matrix_transpose(&vec![self.l.clone()]), &identity);
+            // let c: Vec<Vec<f64>> = matrix_transpose(&matrix_scale(
+            //     &vec![(problem.f)(t + tau, &x_next).to_vec()],
+            //     tau,
+            // ));
+            // let d: Vec<Vec<f64>> =
+            //     matrix_product(&tensor_product(&matrix_product(&e, &p), &identity), &z_col);
 
             // println!("###########################");
             // println!("b: {:?}", b);
@@ -568,11 +577,25 @@ impl<const N: usize> NordsieckMethod<N> {
             // println!("c: {}x{}", c.len(), c[0].len());
             std::io::stdout().flush().unwrap();
             let b: Vec<Vec<f64>> = matrix_transpose(&b);
+            // // println!("###########################");
+            // // println!("b: {:?}", b);
+            // // println!("b: {}x{}", b.len(), b[0].len());
+            // // println!("c: {:?}", c);
+            // // println!("c: {}x{}", c.len(), c[0].len());
+            // std::io::stdout().flush().unwrap();
+            // // let b: Vec<Vec<f64>> = matrix_transpose(&b);
 
-            let e: Vec<Vec<f64>> = matrix_product(&b, &matrix_sub(&c, &d));
-            let f: Vec<Vec<f64>> = matrix_sum(&a, &e);
-            let g: Vec<Vec<f64>> = matrix_sub(&f, &z_col);
-            matrix_transpose(&g)[0].clone()
+            // let e: Vec<Vec<f64>> = matrix_product(&b, &matrix_sub(&c, &d));
+            // let f: Vec<Vec<f64>> = matrix_sum(&a, &e);
+            // let g: Vec<Vec<f64>> = matrix_sub(&f, &z_col);
+            // matrix_transpose(&g)[0].clone()
+
+            let q: Vec<Vec<f64>> = matrix_product(&p, &z_col);
+
+            matrix_sub(
+                &vec![z_next.clone()],
+                &matrix_sum(&q, &matrix_scale(&vec![self.l.clone()], (tau * (problem.f)(t + tau, &[z[0]; N])[0] - matrix_product(&e, &q)[0][0]))),
+            )[0].clone()
         };
 
         let mut z_flat: Vec<f64> = vec![0.0; N * z.len()];
@@ -584,6 +607,13 @@ impl<const N: usize> NordsieckMethod<N> {
         }
 
         let z_new_flat: Vec<f64> = match solve_newton_vec(&equation, &z_flat, None) {
+        println!("{:?}", z);
+        println!("{:?}", equation(&z));
+        println!("AAA BBB CCC {:?}", equation(&vec![0.0, 0.0]));
+        println!("AAA BBB CCC {:?}", equation(&vec![0.0, 1.0]));
+        println!("AAA BBB CCC {:?}", equation(&vec![0.0, -1.0]));
+
+        let z_new: Vec<f64> = match solve_newton_vec(&equation, &z, None) {
             Ok(x) => x,
             Err(err) => {
                 println!("Failed to solve, {}", err);
@@ -615,11 +645,11 @@ impl<const N: usize> CauchySolver<N> for NordsieckMethod<N> {
         let mut iterations: u32 = 0u32;
         let save_every = save_every.unwrap_or(1);
 
-        let mut z = vec![[0.0; N]; self.l.len()];
+        let mut z: Vec<f64> = vec![0.0; self.l.len() * N];
 
-        for i in 0..problem.x_0.len() {
-            z[i][0] = problem.x_0[0];
-            z[i][1] = (problem.f)(problem.start, &problem.x_0)[i];
+        for i in 0..N {
+            z[i * N + 0] = problem.x_0[i];
+            z[i * N + 1] = tau * (problem.f)(problem.start, &problem.x_0)[i];
         }
 
         let mut solution: CauchySolution<N> = CauchySolution {
@@ -642,7 +672,7 @@ impl<const N: usize> CauchySolver<N> for NordsieckMethod<N> {
             // };
 
             // let res = self.step(problem, tau, &t_i,&z);
-            let res: Result<(f64, Vec<[f64; N]>), &str> =
+            let res: Result<(f64, Vec<f64>), &str> =
                 self.step(problem, tau, *t_i.last().unwrap(), &z);
 
             match res {
@@ -653,7 +683,7 @@ impl<const N: usize> CauchySolver<N> for NordsieckMethod<N> {
                         solution.t.push(t);
                         let mut x: [f64; N] = [0.0; N];
                         for i in 0..N {
-                            x[i] = z[i][0]
+                            x[i] = z[i * N]
                         }
                         solution.x.push(x);
                         if print_progress {
