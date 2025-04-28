@@ -64,7 +64,7 @@ fn main() {
 
     let start_time: std::time::Instant = std::time::Instant::now();
     let (solution, _res) =
-        crate::newton_boundary_method::newton_boundary_method(&mut problem, 0.0001, 1e-5);
+        crate::newton_boundary_method::newton_boundary_method(&mut problem, 0.001, 1e-5);
     // let (solution, _res) = crate::newton_boundary_method::newton_boundary_method(&mut problem, 0.001, 1e-2);
     let duration: std::time::Duration = start_time.elapsed();
     write_csv(format!("newton_method"), solution, 0.001, duration);

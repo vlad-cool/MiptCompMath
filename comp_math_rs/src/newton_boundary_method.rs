@@ -25,26 +25,12 @@ fn get_second_derivative(y: &std::vec::Vec<[f64; 4]>, n: usize) -> f64 {
     }
 }
 
-fn calc_derivatives(res: &mut std::vec::Vec<[f64; 4]>)
-{
+fn calc_derivatives(res: &mut std::vec::Vec<[f64; 4]>) {
     let n = res.len();
     for i in 0..n {
         res[i][2] = get_first_derivative(&res, i);
         res[i][3] = get_second_derivative(&res, i);
     }
-}
-
-fn get_discrepancy<F>(f: &mut F, x: &std::vec::Vec<[f64; 4]>) -> f64
-where
-    F: FnMut(f64, &[f64; 2]) -> [f64; 2],
-{
-    let n: usize = x.len();
-    let mut res: f64 = (f(x[0][0], &[x[0][2], x[0][1]])[0] - x[0][3]).abs();
-    for i in 1..n {
-        let cur: f64 = (f(x[i][0], &[x[i][2], x[i][1]])[0] - x[i][3]).abs();
-        res = if cur > res { cur } else { res };
-    }
-    res
 }
 
 pub fn newton_boundary_method<F>(
@@ -77,31 +63,18 @@ where
 
     calc_derivatives(&mut res);
 
-    // println!("{} e^x + {}", p, q);
-    // println!("{:?}", res);
-
-    let mut iter: i32 = 0;
-    while get_discrepancy(&mut problem.f, &res) > epsilon {
-        println!("{}, {:.8}", iter, get_discrepancy(&mut problem.f, &res));
-        iter += 1;
-
+    loop {
         let mut a: Vec<Vec<f64>> = vec![vec![0.0; n]; n];
         let mut d: Vec<f64> = vec![0.0; n];
-        
+
         for i in 1..n - 1 {
-            let q: f64 = -((problem.f)(res[i][0], &[res[i][1], res[i][2] + h])[1] - (problem.f)(res[i][0], &[res[i][1], res[i][2] - h])[1]) / (2.0 * h);
-            let p: f64 = -((problem.f)(res[i][0], &[res[i][1] + h, res[i][2]])[1] - (problem.f)(res[i][0], &[res[i][1] - h, res[i][2]])[1]) / (2.0 * h);
+            let q: f64 = -((problem.f)(res[i][0], &[res[i][1], res[i][2] + h])[1]
+                - (problem.f)(res[i][0], &[res[i][1], res[i][2] - h])[1])
+                / (2.0 * h);
+            let p: f64 = -((problem.f)(res[i][0], &[res[i][1] + h, res[i][2]])[1]
+                - (problem.f)(res[i][0], &[res[i][1] - h, res[i][2]])[1])
+                / (2.0 * h);
             let r: f64 = (problem.f)(res[i][0], &[res[i][1], res[i][2]])[1] - res[i][3];
-            // let q: f64 = ((problem.f)(res[i][0], &[res[i][2] + h, res[i][1]])[1]
-            //     - (problem.f)(res[i][0], &[res[i][2] - h, res[i][1]])[1])
-            //     / (2.0 * h);
-            // let p: f64 = ((problem.f)(res[i][0], &[res[i][2], res[i][1] + h])[0]
-            //     - (problem.f)(res[i][0], &[res[i][2], res[i][1] - h])[0])
-            //     / (2.0 * h);
-            // let r: f64 = res[i][3] - (problem.f)(res[i][0], &[res[i][2], res[i][1]])[0];
-            // let p: f64 = -p;
-            // let q: f64 = -q;
-            // let r: f64 = -r;
 
             a[i][i - 1] = 1.0 - q * step / 2.0;
             a[i][i + 1] = 1.0 + q * step / 2.0;
@@ -119,12 +92,22 @@ where
 
         let res_y: Vec<f64> = solve_tridiagonal_linear_system(a, d);
 
-        // println!("{:?}", res_y);
-
         for i in 0..n {
             res[i][1] += res_y[i];
         }
         calc_derivatives(&mut res);
+
+        let mut discrepancy: f64 = 0.0;
+        for i in 0..n {
+            discrepancy = if res_y[i].abs() > discrepancy {
+                res_y[i].abs()
+            } else {
+                discrepancy
+            };
+        }
+        if discrepancy < epsilon {
+            break;
+        }
     }
 
     let mut res_x: Vec<f64> = vec![0.0; n];
