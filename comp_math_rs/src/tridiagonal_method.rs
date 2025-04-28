@@ -3,7 +3,7 @@ use std::vec;
 use crate::boundary_problem::LinearBoundaryProblem;
 use crate::boundary_problem::BoundarySolution;
 
-fn solve_tridiagonal_linear_system(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Vec<f64> {
+pub fn solve_tridiagonal_linear_system(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Vec<f64> {
     let n: usize = b.len();
     assert!(n > 0);
     assert!(a.len() == n);

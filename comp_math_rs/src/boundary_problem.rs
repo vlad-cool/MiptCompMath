@@ -15,7 +15,7 @@ pub struct LinearBoundaryProblem {
     pub u_2: f64,
 }
 
-// y'' + q(x)y' + p(x)y = f(x)
+// y'' = f(x, [y, y'])
 // a_1 y'(x_0) + b_1 y(x_0) = u_1
 // a_2 y'(x_n) + b_2 y(x_n) = u_2
 pub struct NonlinearBoundaryProblem<F>

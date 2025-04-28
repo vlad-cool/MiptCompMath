@@ -44,10 +44,10 @@ fn write_csv<const N: usize>(
     file.write(format!("{}\n", time.as_secs_f64()).as_bytes())
         .expect("failed to write to file");
     for i in 0..solution.t.len() {
-        file.write(format!("{}", solution.t[i]).as_bytes())
+        file.write(format!("{:.8}", solution.t[i]).as_bytes())
             .expect("failed to write to file");
         for j in 0..N {
-            file.write(format!(", {}", solution.x[i][j]).as_bytes())
+            file.write(format!(", {:.8}", solution.x[i][j]).as_bytes())
                 .expect("failed to write to file");
         }
         file.write("\n".as_bytes())

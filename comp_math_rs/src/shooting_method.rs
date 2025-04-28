@@ -35,7 +35,7 @@ where
                 - problem.u_2]
         };
 
-    let res: Result<[f64; 1], &str> = solve_newton(equation, &[1.0], None);
+    let res: Result<[f64; 1], &str> = solve_newton(equation, &[0.0], None);
     let v: f64 = res.unwrap()[0];
 
     let (y, dy) = if problem.a_1 == 0.0 {

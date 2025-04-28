@@ -27,9 +27,9 @@ fn write_csv(path: String, solution: BoundarySolution, step: f64, time: std::tim
     file.write(format!("{}\n", time.as_secs_f64()).as_bytes())
         .expect("failed to write to file");
     for i in 0..solution.x.len() {
-        file.write(format!("{}", solution.x[i]).as_bytes())
+        file.write(format!("{:.8}", solution.x[i]).as_bytes())
             .expect("failed to write to file");
-        file.write(format!(", {}", solution.y[i]).as_bytes())
+        file.write(format!(", {:.8}", solution.y[i]).as_bytes())
             .expect("failed to write to file");
         file.write("\n".as_bytes())
             .expect("failed to write to file");
@@ -38,7 +38,8 @@ fn write_csv(path: String, solution: BoundarySolution, step: f64, time: std::tim
 
 fn main() {
     let mut problem: NonlinearBoundaryProblem<_> = NonlinearBoundaryProblem {
-        f: |_: f64, x: &[f64; 2]| [-x[0].powi(2) / (2.0 - x[1]), x[0]],
+        // f(x, [y, y'])
+        f: |_: f64, x: &[f64; 2]| [x[1], -x[1].powi(2) / (2.0 - x[0])],
         x_0: 0.0,
         x_n: 1.0,
         a_1: 0.0,
@@ -56,7 +57,15 @@ fn main() {
         );
     let mut solver: Box<dyn CauchySolver<2, _>> = Box::new(solver);
     let start_time: std::time::Instant = std::time::Instant::now();
-    let (solution, _res) = crate::shooting_method::shooting_method(&mut problem, &mut solver, 0.001);
+    let (solution, _res) =
+        crate::shooting_method::shooting_method(&mut problem, &mut solver, 0.001);
     let duration: std::time::Duration = start_time.elapsed();
     write_csv(format!("shooting_method"), solution, 0.001, duration);
+
+    let start_time: std::time::Instant = std::time::Instant::now();
+    let (solution, _res) =
+        crate::newton_boundary_method::newton_boundary_method(&mut problem, 0.0001, 1e-5);
+    // let (solution, _res) = crate::newton_boundary_method::newton_boundary_method(&mut problem, 0.001, 1e-2);
+    let duration: std::time::Duration = start_time.elapsed();
+    write_csv(format!("newton_method"), solution, 0.001, duration);
 }
