@@ -77,7 +77,7 @@ fn main() {
     // let (solution, _res) =
     //     crate::shooting_method::shooting_method(&mut problem, &mut solver, 0.001);
     // let duration: std::time::Duration = start_time.elapsed();
-    let res = solve_newton(equation, &[0.0], None);
+    let res = solve_newton(equation, &[10.0], None);
     let a: f64 = res.unwrap()[0];
     let a: f64 = a.exp() + 10.0;
 
@@ -90,7 +90,7 @@ fn main() {
         x_0: [0.0, a],
     };
 
-    let (solution, res) = cauchy_solver.solve(&mut cauchy_problem, 0.001, false, None);
+    let (solution, _res) = cauchy_solver.solve(&mut cauchy_problem, 0.001, false, None);
 
     write_csv(format!("shooting_method"), "".to_string(), solution, 0.001, std::time::Duration::from_micros(0));
 }

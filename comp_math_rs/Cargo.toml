@@ -19,8 +19,8 @@ path = "src/task7_2.rs"
 name = "lbp_test"
 path = "src/lbp_test.rs"
 
-# [[bin]]
-# name = "nordsieck_test"
-# path = "src/nordsieck_test.rs"
+[[bin]]
+name = "nordsieck_test"
+path = "src/nordsieck_test.rs"
 
 [dependencies]
