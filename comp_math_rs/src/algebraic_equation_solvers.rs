@@ -43,48 +43,69 @@ pub fn solve_linear_system<const N: usize>(a: &[[f64; N]; N], b: &[f64; N]) -> [
     x
 }
 
-pub fn solve_linear_system_vec(a: &std::vec::Vec<std::vec::Vec<f64>>, b: &std::vec::Vec<f64>) -> std::vec::Vec<f64> {
+fn get_discrepancy_vec(
+    a: &std::vec::Vec<std::vec::Vec<f64>>,
+    b: &std::vec::Vec<f64>,
+    x: &std::vec::Vec<f64>,
+) -> f64 {
+    let n = a.len();
+    let mut disc: f64 = 0.0;
+    for i in 0..n {
+        let mut sum: f64 = 0f64;
+        for j in 0..n {
+            sum += a[i][j] * x[j];
+        }
+        disc = if disc > (sum - b[i]).abs() {
+            disc
+        } else {
+            (sum - b[i]).abs()
+        };
+    }
+    disc
+}
+
+pub fn solve_linear_system_vec(
+    a: &std::vec::Vec<std::vec::Vec<f64>>,
+    b: &std::vec::Vec<f64>,
+) -> std::vec::Vec<f64> {
     let n = b.len();
 
-    let mut l: Vec<Vec<f64>> = vec![vec![0f64; n]; n];
-    let mut u: Vec<Vec<f64>> = vec![vec![0f64; n]; n];
+    let mut a_new: Vec<Vec<f64>> = vec![vec![0.0; n]; n];
+    let mut b_new: Vec<f64> = vec![0.0; n];
 
     for i in 0..n {
-        l[i][i] = 1f64;
-        for j in i..n {
-            let mut sum: f64 = 0f64;
-            for k in 0..i {
-                sum += l[i][k] * u[k][j];
+        for j in 0..n {
+            for k in 0..n {
+                a_new[i][j] += a[i][k] * a[k][j];
             }
-            u[i][j] = a[i][j] - sum;
-        }
-
-        for j in i..n {
-            let mut sum: f64 = 0f64;
-            for k in 0..i {
-                sum += l[j][k] * u[k][i];
-            }
-            l[j][i] = (a[j][i] - sum) / u[i][i];
         }
     }
 
-    let mut v: Vec<f64> = vec![0f64; n];
     for i in 0..n {
-        v[i] = b[i];
-        for j in 0..i {
-            v[i] -= l[i][j] * v[j];
+        for j in 0..n {
+            b_new[i] += b[j] * a[i][j];
         }
     }
+
+    let a: Vec<Vec<f64>> = a_new;
+    let b: Vec<f64> = b_new;
 
     let mut x: Vec<f64> = vec![0f64; n];
 
-    for i in (0..n).rev() {
-        x[i] = v[i] / u[i][i];
-        for j in i + 1..n {
-            x[i] -= u[i][j] * x[j] / u[i][i];
+    while get_discrepancy_vec(&a, &b, &x) > 1e-7 {
+        for i in 0..n {
+            x[i] = 0.0;
+            for j in 0..n {
+                if i == j {
+                    continue;
+                }
+                x[i] -= a[i][j] * x[j];
+            }
+
+            x[i] += b[i];
+            x[i] /= a[i][i];
         }
     }
-
     x
 }
 
@@ -213,6 +234,28 @@ mod tests {
         let solution: [f64; 2] = solve_newton(f, &[0f64, 0f64], None).unwrap();
 
         assert!(close_enough_arr(&f(&solution), &[0f64, 0f64], 1e-6));
+    }
+
+    #[test]
+    fn test_solve_linear_system_vec() {
+        const N: usize = 3;
+        // let a: Vec<Vec<f64>> = vec![
+        //     vec![-4f64, 9f64, -4f64],
+        //     vec![-5f64, -5f64, 6f64],
+        //     vec![2f64, 5f64, -8f64],
+        // ];
+        // let b: Vec<f64> = vec![1.0, 3.0, 2.0];
+        let a: Vec<Vec<f64>> = vec![
+            vec![1.0, 0.0, 3.0],
+            vec![1.0, 2.0, 0.0],
+            vec![0.0, 0.0, 0.5],
+        ];
+        let b: Vec<f64> = vec![1.0, 1.0, 1.0];
+
+        let x: Vec<f64> = solve_linear_system_vec(&a, &b);
+
+        println!("{:?}", x);
+        assert!(get_discrepancy_vec(&a, &b, &x) < 1e-6);
     }
 
     #[test]
