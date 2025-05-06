@@ -65,7 +65,7 @@ fn main() {
         x_0: [0.5, 0.5, 0.5],
     };
 
-    let print_progress: bool = true;
+    let print_progress: bool = false;
 
     let mut index: u32 = 0;
     let count_all: bool = std::env::args().any(|arg| arg == "--compute-all");
@@ -247,7 +247,7 @@ fn main() {
             index += 1;
             let mut solver: NordsieckMethod<3> =
                 NordsieckMethod::new(NordsieckMethodType::ImplicitAdams(order));
-            let tau: f64 = 0.01;
+            let tau: f64 = 0.001;
             let save_every: u32 = 1;
             let start_time: std::time::Instant = std::time::Instant::now();
             let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));
@@ -266,7 +266,7 @@ fn main() {
         index += 1;
         let mut solver: NordsieckMethod<3> =
             NordsieckMethod::new(NordsieckMethodType::ImplicitBackwardDifferentiation(5));
-        let tau: f64 = 0.01;
+        let tau: f64 = 0.001;
         let save_every: u32 = 1;
         let start_time: std::time::Instant = std::time::Instant::now();
         let (solution, res) = solver.solve(&mut problem, tau, print_progress, Some(save_every));

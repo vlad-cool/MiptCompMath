@@ -20,7 +20,6 @@ mod utils;
 
 fn write_csv<const N: usize>(
     group: String,
-    path: String,
     solution: CauchySolution<N>,
     tau: f64,
     time: std::time::Duration,
@@ -92,5 +91,5 @@ fn main() {
 
     let (solution, _res) = cauchy_solver.solve(&mut cauchy_problem, 0.001, false, None);
 
-    write_csv(format!("shooting_method"), "".to_string(), solution, 0.001, std::time::Duration::from_micros(0));
+    write_csv(format!("shooting_method"), solution, 0.001, std::time::Duration::from_micros(0));
 }
