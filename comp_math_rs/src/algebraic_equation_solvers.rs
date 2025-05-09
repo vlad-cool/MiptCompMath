@@ -92,7 +92,7 @@ pub fn solve_linear_system_vec(
 
     let mut x: Vec<f64> = vec![0f64; n];
 
-    while get_discrepancy_vec(&a, &b, &x) > 1e-7 {
+    while get_discrepancy_vec(&a, &b, &x) > 1e-9 {
         for i in 0..n {
             x[i] = 0.0;
             for j in 0..n {
