@@ -11,6 +11,7 @@ mod boundary_problem;
 mod cauchy_problem;
 mod matrix_operations;
 mod nordsieck_method;
+mod parameterized_function;
 mod runge_kutta_method;
 mod utils;
 
@@ -18,7 +19,28 @@ use crate::adams_method::AdamsMethod;
 use crate::backward_differentiation_method::BackwardDifferentiationMethod;
 use crate::nordsieck_method::NordsieckMethod;
 use crate::nordsieck_method::NordsieckMethodType;
+use crate::parameterized_function::ParameterizedFunction;
 use crate::runge_kutta_method::RungeKuttaMethod;
+
+struct F {}
+
+impl ParameterizedFunction<3, 3> for F {
+    fn calc(&mut self, x: &[f64; 3]) -> [f64; 3] {
+        [
+            77.27 * (x[1] + x[0] * (1.0 - 8.375e-6 * x[0] - x[1])),
+            1.0 / 77.27 * (x[2] - (1.0 + x[0]) * x[1]),
+            0.161 * (x[0] - x[2]),
+        ]
+    }
+
+    fn get_parameter(&self, _id: usize) -> Result<f64, parameterized_function::ParameterizedFunctionError> {
+        Err(parameterized_function::ParameterizedFunctionError::WrongParameterId)
+    }
+    
+    fn set_parameter(&mut self, _id: usize, _parameter: f64) -> Result<(), parameterized_function::ParameterizedFunctionError> {
+        Err(parameterized_function::ParameterizedFunctionError::WrongParameterId)
+    }
+}
 
 fn f(_t: f64, x: &[f64; 3]) -> [f64; 3] {
     [

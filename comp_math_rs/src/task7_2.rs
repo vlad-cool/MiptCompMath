@@ -17,6 +17,9 @@ mod runge_kutta_method;
 mod shooting_method;
 mod tridiagonal_method;
 mod utils;
+mod phase_sl_method;
+mod sturm_liuville_problem;
+mod parameterized_function;
 
 fn write_csv<const N: usize>(
     group: String,

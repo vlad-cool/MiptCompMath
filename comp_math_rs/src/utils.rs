@@ -1,3 +1,7 @@
+pub enum SolverError {
+    ArbitraryError
+}
+
 pub fn unflatten<const A: usize, const B: usize>(flat: &[f64]) -> [[f64; A]; B] {
     assert!(flat.len() == A * B);
     std::array::from_fn(|i| std::array::from_fn(|j| flat[i * A + j]))
