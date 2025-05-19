@@ -24,15 +24,36 @@ impl PartialDerivativeEquationSolver for PDESolverRectangle {
 
         for t_i in 1..t_n {
             for x_i in 1..x_n {
-                u[t_i][x_i] = problem.f.calc(&[
+                u[t_i][x_i] = 0.0;
+
+                // u[t_i][x_i] += problem.f.calc(&[
+                //     problem.t_f + (t_i as f64 - 0.0) * tau,
+                //     problem.x_f + (x_i as f64 - 0.0) * h,
+                // ])[0];
+                // u[t_i][x_i] += problem.f.calc(&[
+                //     problem.t_f + (t_i as f64 - 1.0) * tau,
+                //     problem.x_f + (x_i as f64 - 0.0) * h,
+                // ])[0];
+                // u[t_i][x_i] += problem.f.calc(&[
+                //     problem.t_f + (t_i as f64 - 0.0) * tau,
+                //     problem.x_f + (x_i as f64 - 1.0) * h,
+                // ])[0];
+                // u[t_i][x_i] += problem.f.calc(&[
+                //     problem.t_f + (t_i as f64 - 1.0) * tau,
+                //     problem.x_f + (x_i as f64 - 1.0) * h,
+                // ])[0];
+                // u[t_i][x_i] /= 4.0;
+
+                u[t_i][x_i] += problem.f.calc(&[
                     problem.t_f + (t_i as f64 - 0.5) * tau,
                     problem.x_f + (x_i as f64 - 0.5) * h,
-                ])[0]
-                    * 2.0
-                    * tau
-                    * h
-                    + (u[t_i - 1][x_i - 1] + u[t_i - 1][x_i] - u[t_i][x_i - 1]) * h
-                    + (u[t_i - 1][x_i - 1] - u[t_i - 1][x_i] + u[t_i][x_i - 1]) * problem.a * tau;
+                ])[0];
+
+                u[t_i][x_i] *= 2.0 * tau * h;
+
+                u[t_i][x_i] += (u[t_i - 1][x_i - 1] + u[t_i - 1][x_i] - u[t_i][x_i - 1]) * h;
+                u[t_i][x_i] +=
+                    (u[t_i - 1][x_i - 1] - u[t_i - 1][x_i] + u[t_i][x_i - 1]) * problem.a * tau;
                 u[t_i][x_i] /= problem.a * tau + h;
             }
         }

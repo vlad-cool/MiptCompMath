@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{fmt::format, io::Write};
+use std::io::Write;
 
 mod adams_method;
 mod algebraic_equation_solvers;
@@ -27,30 +27,36 @@ fn write_csv(
     solution: crate::pde_problem::PartialDerivativeSolution,
     tau: f64,
     h: f64,
+    error: f64,
     time: std::time::Duration,
 ) {
-    let x_save_step: usize = std::cmp::max(1, (0.01 / h) as usize);
-    let t_save_step: usize = std::cmp::max(1, (0.01 / tau) as usize);
+    let x_save_step: usize = std::cmp::max(1, (0.25 * 0.01 / h) as usize);
+    let t_save_step: usize = std::cmp::max(1, (0.25 * 0.01 / tau) as usize);
     let mut file =
         std::fs::File::create(format!("../task8_1_data/{path}.csv")).expect("Failed to open file");
     file.write(format!("{}\n", h).as_bytes())
         .expect("failed to write to file");
     file.write(format!("{}\n", tau).as_bytes())
         .expect("failed to write to file");
+    file.write(format!("{}\n", error).as_bytes())
+        .expect("failed to write to file");
     file.write(format!("{}\n", time.as_secs_f64()).as_bytes())
         .expect("failed to write to file");
     for t_i in (0..solution.solution.len()).step_by(t_save_step) {
         for x_i in (0..solution.solution[t_i].len()).step_by(x_save_step) {
             let mut avg: f64 = 0.0;
+            let mut n: usize = 0;
             for t_j in 0..t_save_step {
                 for x_j in 0..x_save_step {
-                    if t_i + t_j < solution.solution.len() && x_i + x_j < solution.solution[t_i + t_j].len()
+                    if t_i + t_j < solution.solution.len()
+                        && x_i + x_j < solution.solution[t_i + t_j].len()
                     {
                         avg += solution.solution[t_i + t_j][x_i + x_j];
+                        n += 1;
                     }
                 }
             }
-            avg /= (t_save_step * x_save_step) as f64;
+            avg /= n as f64;
             file.write(format!("{:.8}, ", avg).as_bytes())
                 .expect("failed to write to file");
         }
@@ -63,7 +69,8 @@ struct F {}
 
 impl ParameterizedFunction<2, 1> for F {
     fn calc(&mut self, x: &[f64; 2]) -> [f64; 1] {
-        [x[0].powi(2) + 4.0 * x[0] * x[1]]
+        [x[1].powi(2) + 4.0 * x[0] * x[1]]
+        // [0.0]
     }
 
     fn get_parameter(
@@ -141,25 +148,10 @@ fn main() {
         t_l: 2.0,
     };
 
-    for h_pow in 2..5 {
-        for tau_pow in 2..5 {
-            let h: f64 = 0.1f64.powi(h_pow);
-            let tau: f64 = 0.1f64.powi(tau_pow);
-
-            println!("{h} {tau}");
-
-            let solver: PDESolverRectangle = PDESolverRectangle {};
-
-            let start_time: std::time::Instant = std::time::Instant::now();
-            let solution: PartialDerivativeSolution = solver.solve(&mut problem, tau, h);
-
-            write_csv(
-                format!("rectangle_{h_pow}_{tau_pow}"),
-                solution,
-                tau,
-                h,
-                start_time.elapsed(),
-            );
+    for h_pow in 2..7 {
+        for tau_pow in 2..7 {
+            let h: f64 = 0.25f64.powi(h_pow);
+            let tau: f64 = 0.25f64.powi(tau_pow);
 
             let t_n: usize = ((problem.t_l - problem.t_f) / tau).ceil() as usize;
             let x_n: usize = ((problem.x_l - problem.x_f) / h).ceil() as usize;
@@ -184,9 +176,39 @@ fn main() {
 
             write_csv(
                 format!("analytical_{h_pow}_{tau_pow}"),
-                PartialDerivativeSolution { solution: u },
+                PartialDerivativeSolution { solution: u.clone() },
                 tau,
                 h,
+                0.0,
+                start_time.elapsed(),
+            );
+
+            let u_analytical: Vec<Vec<f64>> = u;
+
+            let solver: PDESolverRectangle = PDESolverRectangle {};
+
+            let start_time: std::time::Instant = std::time::Instant::now();
+            let solution: PartialDerivativeSolution = solver.solve(&mut problem, tau, h);
+
+            let mut error: f64 = 0.0;
+            let u: Vec<Vec<f64>> = solution.solution.clone();
+
+            for i in 0..u.len() {
+                for j in 0..u[i].len() {
+                    error = if error < (u[i][j] - u_analytical[i][j]).abs() {
+                        (u[i][j] - u_analytical[i][j]).abs()
+                    } else {
+                        error
+                    }
+                }
+            }
+
+            write_csv(
+                format!("rectangle_{h_pow}_{tau_pow}"),
+                solution,
+                tau,
+                h,
+                error,
                 start_time.elapsed(),
             );
         }
