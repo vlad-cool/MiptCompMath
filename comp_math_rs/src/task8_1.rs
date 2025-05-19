@@ -211,6 +211,35 @@ fn main() {
                 error,
                 start_time.elapsed(),
             );
+            
+            //////////////////////////////////////
+            
+            let solver:PDESolverAngleExplicitLeft  = PDESolverAngleExplicitLeft {};
+
+            let start_time: std::time::Instant = std::time::Instant::now();
+            let solution: PartialDerivativeSolution = solver.solve(&mut problem, tau, h);
+
+            let mut error: f64 = 0.0;
+            let u: Vec<Vec<f64>> = solution.solution.clone();
+
+            for i in 0..u.len() {
+                for j in 0..u[i].len() {
+                    error = if error < (u[i][j] - u_analytical[i][j]).abs() {
+                        (u[i][j] - u_analytical[i][j]).abs()
+                    } else {
+                        error
+                    }
+                }
+            }
+
+            write_csv(
+                format!("angle_explicit_left_{h_pow}_{tau_pow}"),
+                solution,
+                tau,
+                h,
+                error,
+                start_time.elapsed(),
+            );
         }
     }
 }
