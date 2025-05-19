@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::io::Write;
+use std::{fmt::format, io::Write};
 
 mod adams_method;
 mod algebraic_equation_solvers;
@@ -29,6 +29,8 @@ fn write_csv(
     h: f64,
     time: std::time::Duration,
 ) {
+    let x_save_step: usize = std::cmp::max(1, (0.01 / h) as usize);
+    let t_save_step: usize = std::cmp::max(1, (0.01 / tau) as usize);
     let mut file =
         std::fs::File::create(format!("../task8_1_data/{path}.csv")).expect("Failed to open file");
     file.write(format!("{}\n", h).as_bytes())
@@ -37,9 +39,19 @@ fn write_csv(
         .expect("failed to write to file");
     file.write(format!("{}\n", time.as_secs_f64()).as_bytes())
         .expect("failed to write to file");
-    for t_i in (0..solution.solution.len()).step_by(50) {
-        for x_i in (0..solution.solution[t_i].len()).step_by(50) {
-            file.write(format!("{:.8}, ", solution.solution[t_i][x_i]).as_bytes())
+    for t_i in (0..solution.solution.len()).step_by(t_save_step) {
+        for x_i in (0..solution.solution[t_i].len()).step_by(x_save_step) {
+            let mut avg: f64 = 0.0;
+            for t_j in 0..t_save_step {
+                for x_j in 0..x_save_step {
+                    if t_i + t_j < solution.solution.len() && x_i + x_j < solution.solution[t_i + t_j].len()
+                    {
+                        avg += solution.solution[t_i + t_j][x_i + x_j];
+                    }
+                }
+            }
+            avg /= (t_save_step * x_save_step) as f64;
+            file.write(format!("{:.8}, ", avg).as_bytes())
                 .expect("failed to write to file");
         }
         file.write("\n".as_bytes())
@@ -51,7 +63,7 @@ struct F {}
 
 impl ParameterizedFunction<2, 1> for F {
     fn calc(&mut self, x: &[f64; 2]) -> [f64; 1] {
-        [x[0] * x[1]]
+        [x[0].powi(2) + 4.0 * x[0] * x[1]]
     }
 
     fn get_parameter(
@@ -97,8 +109,8 @@ struct Psi {}
 
 impl ParameterizedFunction<1, 1> for Psi {
     fn calc(&mut self, x: &[f64; 1]) -> [f64; 1] {
-        // [x[0].powi(2)]
-        [(1.0 - x[0].cos()) / 2.0]
+        [x[0].powi(2)]
+        // [(1.0 - (x[0] * 6.0 *std::f64::consts::PI).cos()) / 2.0]
     }
 
     fn get_parameter(
@@ -129,48 +141,54 @@ fn main() {
         t_l: 2.0,
     };
 
-    let h: f64 = 0.0001;
-    let tau: f64 = 0.0001;
+    for h_pow in 2..5 {
+        for tau_pow in 2..5 {
+            let h: f64 = 0.1f64.powi(h_pow);
+            let tau: f64 = 0.1f64.powi(tau_pow);
 
-    let solver: PDESolverRectangle = PDESolverRectangle {};
+            println!("{h} {tau}");
 
-    let start_time: std::time::Instant = std::time::Instant::now();
-    let solution: PartialDerivativeSolution = solver.solve(&mut problem, tau, h);
+            let solver: PDESolverRectangle = PDESolverRectangle {};
 
-    write_csv(
-        "rectangle".to_string(),
-        solution,
-        tau,
-        h,
-        start_time.elapsed(),
-    );
+            let start_time: std::time::Instant = std::time::Instant::now();
+            let solution: PartialDerivativeSolution = solver.solve(&mut problem, tau, h);
 
-    let t_n: usize = ((problem.t_l - problem.t_f) / tau).ceil() as usize;
-    let x_n: usize = ((problem.x_l - problem.x_f) / h).ceil() as usize;
+            write_csv(
+                format!("rectangle_{h_pow}_{tau_pow}"),
+                solution,
+                tau,
+                h,
+                start_time.elapsed(),
+            );
 
-    let mut u: Vec<Vec<f64>> = vec![vec![0.0; x_n]; t_n];
+            let t_n: usize = ((problem.t_l - problem.t_f) / tau).ceil() as usize;
+            let x_n: usize = ((problem.x_l - problem.x_f) / h).ceil() as usize;
 
-    let start_time: std::time::Instant = std::time::Instant::now();
-    for t_i in 0..t_n {
-        for x_i in 0..x_n {
-            let t: f64 = t_i as f64 * tau + problem.t_f;
-            let x: f64 = x_i as f64 * h + problem.x_f;
-            u[t_i][x_i] = 0.0;
-            if x - t * problem.a >= 0.0 {
-                u[t_i][x_i] += problem.phi.calc(&[x - t * problem.a])[0];
+            let mut u: Vec<Vec<f64>> = vec![vec![0.0; x_n]; t_n];
+
+            let start_time: std::time::Instant = std::time::Instant::now();
+            for t_i in 0..t_n {
+                for x_i in 0..x_n {
+                    let t: f64 = t_i as f64 * tau + problem.t_f;
+                    let x: f64 = x_i as f64 * h + problem.x_f;
+                    u[t_i][x_i] = 0.0;
+                    if x - t * problem.a >= 0.0 {
+                        u[t_i][x_i] += problem.phi.calc(&[x - t * problem.a])[0];
+                    }
+                    if t - x / problem.a >= 0.0 {
+                        u[t_i][x_i] += problem.psi.calc(&[t - x / problem.a])[0];
+                    }
+                    u[t_i][x_i] += x.powi(2) * t;
+                }
             }
-            if t - x / problem.a >= 0.0 {
-                u[t_i][x_i] += problem.psi.calc(&[t - x / problem.a])[0];
-            }
-            u[t_i][x_i] += x.powi(2) * t;
+
+            write_csv(
+                format!("analytical_{h_pow}_{tau_pow}"),
+                PartialDerivativeSolution { solution: u },
+                tau,
+                h,
+                start_time.elapsed(),
+            );
         }
     }
-
-    write_csv(
-        "analytical".to_string(),
-        PartialDerivativeSolution { solution: u },
-        tau,
-        h,
-        start_time.elapsed(),
-    );
 }
