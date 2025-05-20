@@ -20,6 +20,10 @@ name = "task8_1"
 path = "src/task8_1.rs"
 
 [[bin]]
+name = "task8_16"
+path = "src/task8_16.rs"
+
+[[bin]]
 name = "lbp_test"
 path = "src/lbp_test.rs"
 
