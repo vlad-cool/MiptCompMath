@@ -148,10 +148,14 @@ fn main() {
         t_l: 2.0,
     };
 
-    for h_pow in 2..7 {
-        for tau_pow in 2..7 {
+    for h_pow in 2..6 {
+        // let tau_pow = 0.5 * h / problem.a;
+        // for tau_pow in 2..7
+        {
             let h: f64 = 0.25f64.powi(h_pow);
-            let tau: f64 = 0.25f64.powi(tau_pow);
+            // let tau: f64 = 0.25f64.powi(tau_pow);
+            let tau_pow: i32 = h_pow;
+            let tau: f64 = 0.5 * h / problem.a;
 
             let t_n: usize = ((problem.t_l - problem.t_f) / tau).ceil() as usize;
             let x_n: usize = ((problem.x_l - problem.x_f) / h).ceil() as usize;
